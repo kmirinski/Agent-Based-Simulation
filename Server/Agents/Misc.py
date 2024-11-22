@@ -35,6 +35,14 @@ class Event_Type(Enum):
     DELIVERED = 3
     # NOT_DELIVERED = 4
 
+# class Event_Type(Enum):
+#     NOT_ARRIVED = 0
+#     ARRIVED = 1
+#     DISPATCHED = 2
+#     # IN_PROGRESS = 2
+#     DELIVERED = 3
+#     # NOT_DELIVERED = 4
+
 class Event:
     def __init__(self, timestamp, type, request_id):
         self.timestamp = timestamp
