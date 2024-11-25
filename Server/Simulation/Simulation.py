@@ -69,28 +69,30 @@ def create_requests(shipper, requests_df, dist_matrix):
 
 
 def process_event(env, event, shipper):
+
     if event.type == Event_Type.DISPATCHED:
         print(f"Time {env.now}: Dispatching request {event.request_id}")
         env.process(shipper.process_dispatch_request(env, get_request(event.request_id)))
-    # elif event.type == Event_Type.IN_PROGRESS:
-    #     print(f"Time {env.now}: Delivering request {event.request_id}")
-        # shipper.deliver_request(request)
+        print("kur")
     elif event.type == Event_Type.DELIVERED:
         print(f"Time {env.now}: Delivered request {event.request_id}")
         env.process(shipper.delivered_request(get_request(event.request_id)))
-    # elif event.type == Event_Type.NOT_DELIVERED:
-    #     shipper.not_delivered_request(env, request_dict[event.request_id])
     else:
         print("Event type not recognized")
         
 
 
 def event_handler(env, shipper):
+    i = 0
     while not pq_queue_is_empty():
+        i += 1
+        print(i)
         print_all_ids()
         event_time, event = get_event()
+        print("###############")
+        print_all_ids()
         print(f'Event type: {event.type}')
-        print(f"Event time:{event_time}, env time: {env.now}")
+        print(f'Event timestamp: {event_time}, Time now: {env.now}')
         yield env.timeout(event_time - env.now)
         process_event(env, event, shipper)
 
@@ -111,5 +113,5 @@ def run_simulation():
 
     sim_env.process(event_handler(sim_env, shippers[0]))
     sim_env.run()
-
+    
     print('Simulation finished suceccefully')

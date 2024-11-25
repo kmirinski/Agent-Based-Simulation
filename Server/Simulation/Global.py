@@ -13,8 +13,8 @@ def enqueue_event(timestamp, event):
     event_pq.put((timestamp, event))
 
 def print_all_ids():
-    for (i, _) in event_pq.queue:
-        print(i) 
+    for (i, event) in event_pq.queue:
+        print(f'Event priority: {i}, Event timestamp: {event.timestamp}')
 
 def pq_queue_is_empty():
     return event_pq.empty()
@@ -22,6 +22,8 @@ def pq_queue_is_empty():
 def get_event():
     return event_pq.get()
 
+def peek_event():
+    return event_pq.queue[0]
 
 
 # Request Abstaction Functions

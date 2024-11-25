@@ -25,7 +25,7 @@ class Truck:
 
     def estimate_time(self, env):
         print(f"Distance: {self.distance}, Average Speed: {self.average_speed}, Travel Time: {self.travel_time}")
-        enqueue_event(env.now + self.travel_time + 1, Event(env.now + self.travel_time, Event_Type.DELIVERED, self.request_id))
+        enqueue_event(env.now + self.travel_time + 1, Event(env.now + self.travel_time + 1, Event_Type.DELIVERED, self.request_id))
         return self.travel_time
 
 
@@ -50,7 +50,7 @@ class Event:
         self.request_id = request_id
 
     # This function set the priority of the events
-    def __lt__(self, other):
-        if self.timestamp == other.timestamp:
-            return self.type.value < other.type.value  # Tie-breaking logic
-        return self.timestamp < other.timestamp
+    # def __lt__(self, other):
+    #     if self.timestamp == other.timestamp:
+    #         return self.type.value < other.type.value  # Tie-breaking logic
+    #     return self.timestamp < other.timestamp

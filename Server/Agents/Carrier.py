@@ -14,6 +14,7 @@ class Carrier:
     # Initiates a truck to deliver and returns the price
 
     def quota(self, env, request):
-        # print(f"Distance: {self.distance}, Average Speed: {self.average_speed}, Travel Time: {self.travel_time}") 
+        # print(f"Distance: {self.distance}, Average Speed: {self.average_speed}, Travel Time: {self.travel_time}")
+        print("Carrier rules!")
         travel_time = request.distance / self.estimated_average_speed
         return travel_time * price
