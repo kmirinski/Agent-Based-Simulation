@@ -1,14 +1,11 @@
 import simpy
 import pandas as pd
-import os 
+from Simulation.Global import *
 from Agents.Shipper import Shipper
 from Agents.LSP import LSP
 from Agents.Carrier import Carrier
 from Agents.Misc import Request, Event, Event_Type
-from queue import PriorityQueue
 
-event_pq = PriorityQueue()
-request_dict = {}
 
 
 
@@ -65,19 +62,22 @@ def create_requests(shipper, requests_df, dist_matrix):
         time_window = [requests_df.iloc[i]['lw'], requests_df.iloc[i]['uw']]
         
         # Subtracting 1 since the request should be processed 1 hour before it has to be dispatched
-        request_dict[request_id] = Request(request_id, origin, destination, 
+        new_request = Request(request_id, origin, destination, 
                           requests_df.iloc[i]['amount'], requests_df.iloc[i]['price'], time_window, distance)
-        event_pq.put((time_window[0] - 1, Event(time_window[0], Event_Type.DISPATCH, request_id)))
+        add_request(request_id, new_request)
+        
+        new_event = Event(time_window[0], Event_Type.DISPATCHED, request_id)
+        enqueue_event(time_window[0] - 1, new_event)
         # event_pq.put((time_window[1], Event(time_window[0], Event_Type.DISPATCH, request_id)))
     print("Requests and events created successfully")
 
 
 def process_event(env, event, shipper):
-    if event.type == Event_Type.DISPATCH:
+    if event.type == Event_Type.DISPATCHED:
         print(f"Time {env.now}: Dispatching request {event.request_id}")
-        shipper.process_dispatch_request(env, request_dict[event.request_id])
-    elif event.type == Event_Type.IN_PROGRESS:
-        print(f"Time {env.now}: Delivering request {event.request_id}")
+        env.process(shipper.process_dispatch_request(env, get_request(event.request_id)))
+    # elif event.type == Event_Type.IN_PROGRESS:
+    #     print(f"Time {env.now}: Delivering request {event.request_id}")
         # shipper.deliver_request(request)
     elif event.type == Event_Type.DELIVERED:
         print(f"Time {env.now}: Delivered request {event.request_id}")
@@ -90,9 +90,11 @@ def process_event(env, event, shipper):
 
 
 def event_handler(env, shipper):
-    while not event_pq.empty():
-        event_time, event = event_pq.get() 
-        yield env.timeout(event_time - env.now)  
+    while not pq_queue_is_empty():
+        print_all_ids()
+        event_time, event = get_event()
+        print(f"Event time:{event_time}, env time: {env.now}")
+        yield env.timeout(event_time - env.now)
         process_event(env, event, shipper)
 
 

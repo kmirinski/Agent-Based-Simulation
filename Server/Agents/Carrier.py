@@ -1,6 +1,7 @@
 import random
 from Agents.Misc import Truck
 
+price = 100     # We assume the price is 100 per hour
 
 class Carrier:
     def __init__(self, id):
@@ -8,14 +9,14 @@ class Carrier:
         self.assigned_containers = []
         self.total_distance = 0
         self.total_travel_time = 0
+        self.estimated_average_speed = 50         # HARDCODED
     
-    def initiate_truck(self, request):
+    # Initiates a truck to deliver and returns the price
+    def initiate_truck(self, env, request):
         truck = Truck(self, request.id, request.distance)
-        truck.estimate_time()
-        # if the price is 100 per hour
-        return truck * 100
+        travel_time = truck.estimate_time(env)
 
-    def assign_container(self, container, distance, travel_time):
-        self.assigned_containers.append(container)
-        self.total_distance += distance
-        self.total_travel_time += travel_time
+    def quota(self, env, request):
+        # print(f"Distance: {self.distance}, Average Speed: {self.average_speed}, Travel Time: {self.travel_time}") 
+        travel_time = request.distance / self.estimated_average_speed
+        return travel_time * price
