@@ -9,8 +9,8 @@ carriers = []
 
 
 # Event Priority Queue Abstraction
-def enqueue_event(timestamp, event):
-    event_pq.put((timestamp, event))
+def enqueue_event(priority, event):
+    event_pq.put((priority, event))
 
 def print_all_ids():
     for (i, event) in event_pq.queue:
