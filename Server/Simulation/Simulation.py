@@ -26,9 +26,6 @@ def read_data():
     return dist_matrix, requests_df, nodes_df
 
 def generate_agents(num_shippers, num_lsps, num_carriers):
-    shippers = []
-    lsps = []
-    carriers = []
     
     for i in range(num_carriers):
         carriers.append(Carrier(i))
@@ -40,7 +37,6 @@ def generate_agents(num_shippers, num_lsps, num_carriers):
         shippers.append(Shipper(i))
 
     print("Agents generated successfully")
-    return shippers, lsps, carriers
 
 # Hardcoded assignment of agents to each other
 def assign_agents(shippers, lsps, carriers):
@@ -81,7 +77,7 @@ def process_event(env, event, shipper):
         # shipper.deliver_request(request)
     elif event.type == Event_Type.DELIVERED:
         print(f"Time {env.now}: Delivered request {event.request_id}")
-        # shipper.delivered_request(request)
+        env.process(shipper.delivered_request(get_request(event.request_id)))
     # elif event.type == Event_Type.NOT_DELIVERED:
     #     shipper.not_delivered_request(env, request_dict[event.request_id])
     else:
@@ -93,6 +89,7 @@ def event_handler(env, shipper):
     while not pq_queue_is_empty():
         print_all_ids()
         event_time, event = get_event()
+        print(f'Event type: {event.type}')
         print(f"Event time:{event_time}, env time: {env.now}")
         yield env.timeout(event_time - env.now)
         process_event(env, event, shipper)
@@ -105,7 +102,7 @@ def run_simulation():
     num_lsps = 2
     num_carriers = 4
 
-    shippers, lsps, carriers = generate_agents(num_shippers, num_lsps, num_carriers)
+    generate_agents(num_shippers, num_lsps, num_carriers)
 
     # This is done according to the desired scenario to be simulated (will be automized in the future)
     assign_agents(shippers, lsps, carriers)

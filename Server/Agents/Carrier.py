@@ -12,9 +12,6 @@ class Carrier:
         self.estimated_average_speed = 50         # HARDCODED
     
     # Initiates a truck to deliver and returns the price
-    def initiate_truck(self, env, request):
-        truck = Truck(self, request.id, request.distance)
-        travel_time = truck.estimate_time(env)
 
     def quota(self, env, request):
         # print(f"Distance: {self.distance}, Average Speed: {self.average_speed}, Travel Time: {self.travel_time}") 

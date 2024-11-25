@@ -1,4 +1,5 @@
 from Agents.Misc import Truck
+from Simulation.Global import *
 
 class LSP:
     def __init__(self, id):
@@ -14,9 +15,11 @@ class LSP:
         quotes = [(carrier.id, carrier.quota(env, request)) for carrier in self.carriers]
         selected_carrier, price = min(quotes, key=lambda x: x[1])
 
-        selected_carrier.initiate_truck(env, request)
-
         # # Track accepted container
         # self.containers_not_departed.append(request)
 
         return selected_carrier, price
+    
+    def initiate_truck(self, env, request):
+        truck = Truck(self, request.id, request.distance)
+        travel_time = truck.estimate_time(env)

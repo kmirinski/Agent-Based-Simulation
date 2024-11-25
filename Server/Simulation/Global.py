@@ -3,6 +3,11 @@ from queue import PriorityQueue
 event_pq = PriorityQueue()
 request_dict = {}
 
+shippers = []
+lsps = []
+carriers = []
+
+
 # Event Priority Queue Abstraction
 def enqueue_event(timestamp, event):
     event_pq.put((timestamp, event))
