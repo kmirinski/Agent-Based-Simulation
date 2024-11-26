@@ -28,8 +28,8 @@ class SetupHandler(tornado.web.RequestHandler):
         ]
         connectivity = [
             [0,1,1],
-            [0,0,0],
-            [0,0,0]
+            [1,0,1],
+            [1,1,0]
         ]
         paths = [[ [] for i in range(len(connectivity))] for j in range(len(connectivity))]
         for i in range(len(city_names)):
@@ -56,17 +56,17 @@ class SnapshotHandler(tornado.web.RequestHandler):
         self.set_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
     def get(self): 
-        pandas = [
-            [0,np.random.rand(),np.random.rand()],
-            [0,0,0],
-            [0,0,0]
+        empty_trucks = [
+            [1,2,3],
+            [4,5,6],
+            [7,8,9]
             ]
-        coatis = [
-            [0,np.random.rand(),np.random.rand()],
-            [0,0,0],
-            [0,0,0]
+        containers = [
+            [0, 10, 11],
+            [12, 0, 13],
+            [14, 15, 0]
             ]
-        resources = {"pandas": pandas, "coatis":coatis}
+        resources = {"Empty Trucks": empty_trucks, "Containers": containers}
         self.write(json.dumps(resources))
 
 def make_app():

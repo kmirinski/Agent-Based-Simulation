@@ -23,7 +23,7 @@ async function fetchSnapshot(url="http://localhost:8888/snapshot") {
     return json;
 }
 
-function interpolateColor(intensity, M=2) {
+function interpolateColor(intensity, M=100) {
     // M should be the max resources going through one edge
     let rho = intensity / M;
     rho = Math.min(rho,1); //cap at rho=1

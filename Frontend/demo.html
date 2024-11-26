@@ -27,6 +27,7 @@
             padding: 10px;
         }
 
+
         /* Table styling */
         #info table { width: 100%; border-collapse: collapse; }
         #info table, #info th, #info td { border: 1px solid #ddd; padding: 8px; text-align: left; }
@@ -117,7 +118,7 @@
                     instance.edges.forEach((paths, edge) => {
                         edge = JSON.parse(edge);
                         let flow = 0;
-                        let table = new HtmlTable("Origin", "Destination", "Resource", "Quantity");
+                        let table = new HtmlTable("Origin", "Destination", "Type", "Quantity");
                         for (let path of paths) {
                             for (let resource in resources) {
                                 flow += resources[resource][path[0]][path[1]];
@@ -135,9 +136,10 @@
                     for (let node_idx = 0; node_idx < instance.coordinates.length; node_idx++) {
                         let marker = L.marker(instance.coordinates[node_idx]).addTo(snapshotVisuals);
                         marker.on('click', () => {
-                            let outgoingTable = new HtmlTable("Destination", "Resource", "Quantity");
-                            let incomingTable = new HtmlTable("Origin", "Resource", "Quantity");
-
+                            //let outgoingTable = new HtmlTable("Destination", "Type", "Quantity");
+                            //let incomingTable = new HtmlTable("Origin", "Type", "Quantity");
+                            let idleTable = new HtmlTable("Type", "Quantity");
+                            /*
                             for (let resource in resources) {
                                 for (let dest_idx in resources[resource][node_idx]) {
                                     let quantity = resources[resource][node_idx][dest_idx];
@@ -152,7 +154,21 @@
                                     }
                                 }
                             }
-
+                            */
+                            for (let resource in resources) {
+                            
+                                let quantity = resources[resource][node_idx][node_idx];
+                                if (quantity > 0) {
+                                    idleTable.addRow(resource, quantity);
+                                }
+                            
+                            }
+                            displayResourceInfo(`
+                                <h3>${instance.names[node_idx]}</h3>
+                                <h4>Idle Vehicles</h4>
+                                ${idleTable.toHtml()}
+                                `);
+                            /*
                             displayResourceInfo(`
                                 <h3>${instance.names[node_idx]}</h3>
                                 <h4>Outgoing Resources</h4>
@@ -160,6 +176,7 @@
                                 <h4>Incoming Resources</h4>
                                 ${incomingTable.toHtml()}
                                 `);
+                            */
                         });
                     }
                  
