@@ -20,7 +20,7 @@ class SetupHandler(tornado.web.RequestHandler):
 
 
     def get(self):
-        city_names = ["Amstnerdam", "Brussel", "Antwerp"]
+        city_names = ["Amsterdam", "Brussel", "Antwerp"]
         city_coordinates = [
             [4.9041, 52.3676],
             [4.3572, 50.8477],

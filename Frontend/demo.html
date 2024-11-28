@@ -32,6 +32,31 @@
         #info table { width: 100%; border-collapse: collapse; }
         #info table, #info th, #info td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         #info th { background-color: #f4f4f4; }
+
+        #buttonContainer {
+            margin-top: 20px; /* Space above the button */
+            text-align: center; /* Center the button */
+        }
+
+        #nextSnapshot {
+            position: absolute;        /* Make the button float on the page */
+            bottom: 20px;              /* Distance from the bottom edge */
+            right: 20px;               /* Distance from the right edge */
+            padding: 10px 20px;        /* Padding for a better look */
+            font-size: 14px;           /* Font size for the text */
+            background-color: #007BFF; /* Bootstrap blue */
+            color: white;              /* White text color */
+            border: none;              /* No border */
+            border-radius: 5px;        /* Rounded corners */
+            cursor: pointer;           /* Change cursor to pointer on hover */
+            z-index: 1000;
+        }
+
+        #nextSnapshot:hover {
+            background-color: #0056b3; /* Darker blue on hover */
+        }
+
+
     </style>
 </head>
 <body>
@@ -40,6 +65,9 @@
         <div id="info">
             <h3>Information</h3>
             <div id="infoContent">Click on elements on the map to view details here.</div>
+        </div>
+        <div id="buttonContainer">
+            <button id="nextSnapshot">Evolve</button>
         </div>
     </div>
 
@@ -200,11 +228,16 @@
 
             // Initialize map and render snapshot with obtained instance
             const instance = await initMap();
-            renderSnapshot(instance);
+            document.getElementById('nextSnapshot').addEventListener('click', async () => {
+                renderSnapshot(instance);
+            });
         }
 
         // Call the main function to initialize everything
-        initializeApp();
+        let app = initializeApp();
+
+        
+
     </script>
 </body>
 </html>
