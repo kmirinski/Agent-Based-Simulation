@@ -77,6 +77,17 @@
             cursor: not-allowed;       /* Change cursor to indicate it's disabled */
         }
 
+        #sliderContainer {
+            position: absolute;      /* Absolute positioning */
+            bottom: 70px;            /* Position above the buttons */
+            right: 20px;             /* Align with the button container */
+            display: flex;           /* Flexbox for label and slider */
+            flex-direction: row;     /* Place label and slider side-by-side */
+            align-items: center;     /* Center align vertically */
+            gap: 10px;               /* Space between label and slider */
+            z-index: 1000;           /* Ensure it's above other content */
+        }
+
     </style>
 </head>
 <body>
@@ -86,12 +97,18 @@
             <h3>Information</h3>
             <div id="infoContent">Click on elements on the map to view details here.</div>
         </div>
-        <div id="buttonContainer">
+        <div id="sliderContainer">
+            <label for="speedSlider">Speed: </label>
+            <input id="speedSlider" type="range" min="100" max="2000" step="100" value="1000">
+        </div>
+
+        <div id="buttonContainer">            
             <!-- Run button (autoSnapshot) -->
             <button id="autoSnapshot">Run</button>
             <!-- Step button (nextSnapshot) -->
             <button id="nextSnapshot">Step</button>
         </div>
+        
     </div>
 
     <script src="leaflet/leaflet.js"></script>
@@ -110,6 +127,9 @@
         let selected_link = -1;
 
         let enteredSimulation = false;
+
+        let updateInterval = 1000; // Default interval (in milliseconds)
+        let intervalId = null; // To track the interval for updates
 
 
         // Tracking the current state of the "Run" button
@@ -287,38 +307,56 @@
             }
         }
 
+        // Speed to update interval
+        function updateSpeed(newValue) {
+            interval = 2000 - newValue; // Invert the logic: larger value = faster speed
+            if (isRunning) {
+                clearInterval(intervalId); // Clear the old interval
+                intervalId = setInterval(updateSnapshot, interval); // Start a new interval
+            }
+        }
+
 
         async function runVisualizer() {
             //wrapper for the visualizer logic
             await initMap(); // don't do anything until the map loads
 
-
+            // Fetch next simulation state when clicked
             document.getElementById('nextSnapshot').addEventListener('click', async () => {
                 updateSnapshot();
                 if (!enteredSimulation) enterSimulation();
             });
 
-            //-------------------------------logic for run button-----------------------
-            // Toggle the "Run/Pause" state when clicked
-            document.getElementById("autoSnapshot").addEventListener("click", function() {
+            // Initialize slider and attach listener
+            document.getElementById("speedSlider").addEventListener("input", function () {
+                updateSpeed(this.value);
+            });
+
+            // Toggle "Run/Pause" state
+            document.getElementById("autoSnapshot").addEventListener("click", function () {
                 isRunning = !isRunning; // Toggle the running state
-                
-                // Change the button color and text depending on the state
-                const button = document.getElementById("autoSnapshot");
+
+                const button = this;
                 const stepButton = document.getElementById("nextSnapshot");
 
                 if (isRunning) {
                     button.style.backgroundColor = "#ffc107"; // Yellow when running
-                    button.innerText = "Pause";               // Change text to "Pause"
-                    stepButton.disabled = true;               // Disable Step button
+                    button.innerText = "Pause"; // Change text to "Pause"
+                    stepButton.disabled = true; // Disable Step button
+
+                    // Start periodic updates
+                    intervalId = setInterval(updateSnapshot, updateInterval);
                 } else {
                     button.style.backgroundColor = "#28a745"; // Green when paused
-                    button.innerText = "Run";                 // Change text back to "Run"
-                    stepButton.disabled = false;              // Enable Step button
-                }
-            });
-            //--------------------------------------------------------------------------
+                    button.innerText = "Run"; // Change text back to "Run"
+                    stepButton.disabled = false; // Enable Step button
 
+                    // Stop periodic updates
+                    clearInterval(intervalId);
+                }
+
+                if (!enteredSimulation) enterSimulation();
+            });
         }
 
 
