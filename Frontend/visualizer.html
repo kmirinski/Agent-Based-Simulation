@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Map Demo</title>
+    <link rel="stylesheet" href="leaflet/leaflet.css">
+    <style>
+        /* Container for map and info sections */
+        #container {
+            display: flex;          /* Use Flexbox to align map and info sections */
+            height: 100vh;          /* Full viewport height */
+        }
+
+        /* Map and info section styles */
+        #map { 
+            flex: 0 0 80%;          /* Fixed width of 80% */
+            height: 100%;           /* Full height */
+        }
+
+        #info { 
+            flex: 0 0 20%;          /* Fixed width of 20% */
+            height: 100%;           /* Full height */
+            border-left: 1px solid #ddd; /* Add a border on the left for separation */
+            overflow-y: auto;       /* Allow scrolling if content overflows */
+            padding: 10px;
+        }
+
+        /* Table styling */
+        #info table { width: 100%; border-collapse: collapse; }
+        #info table, #info th, #info td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        #info th { background-color: #f4f4f4; }
+
+        /* Button container and styling */
+        #buttonContainer {
+            position: absolute;      /* Position the container absolutely */
+            bottom: 20px;            /* Distance from the bottom */
+            right: 20px;             /* Distance from the right */
+            display: flex;           /* Align buttons side by side */
+            gap: 10px;               /* Space between buttons */
+            z-index: 1000;           /* Ensure buttons are above other content */
+        }
+
+        /* Styling for the buttons */
+        #autoSnapshot, #nextSnapshot {
+            padding: 10px 20px;        /* Padding for better size */
+            font-size: 14px;           /* Font size for the text */
+            border: none;              /* No border */
+            border-radius: 5px;        /* Rounded corners */
+            cursor: pointer;           /* Change cursor to pointer on hover */
+        }
+
+        /* "Run" button (autoSnapshot) styles */
+        #autoSnapshot {
+            background-color: #28a745; /* Green when in Run state */
+            color: white;              /* White text color */
+        }
+
+        #autoSnapshot:hover {
+            background-color: #218838; /* Darker green on hover */
+        }
+
+        /* "Step" button (nextSnapshot) styles */
+        #nextSnapshot {
+            background-color: #007BFF; /* Blue color */
+            color: white;              /* White text color */
+        }
+
+        #nextSnapshot:hover {
+            background-color: #0056b3; /* Darker blue on hover */
+        }
+
+        /* Disable Step button when autoSnapshot is running */
+        #nextSnapshot:disabled {
+            background-color: #d6d6d6; /* Grey color when disabled */
+            cursor: not-allowed;       /* Change cursor to indicate it's disabled */
+        }
+
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="map"></div>
+        <div id="info">
+            <h3>Information</h3>
+            <div id="infoContent">Click on elements on the map to view details here.</div>
+        </div>
+        <div id="buttonContainer">
+            <!-- Run button (autoSnapshot) -->
+            <button id="autoSnapshot">Run</button>
+            <!-- Step button (nextSnapshot) -->
+            <button id="nextSnapshot">Step</button>
+        </div>
+    </div>
+
+    <script src="leaflet/leaflet.js"></script>
+    <script src="utils.js"></script>
+    
+    <script>
+        let map = L.map("map");
+        let setupVisuals = L.featureGroup();
+        let snapshotVisuals = L.featureGroup();
+        let node_names = [];
+        let node_markers = [];
+        let link_polylines = [];
+
+        let tableOnDisplay = false;
+        let selected_node = -1;
+        let selected_link = -1;
+
+        let enteredSimulation = false;
+
+
+        // Tracking the current state of the "Run" button
+        let isRunning = false;
+
+        /*
+        loads the map, nodes, and links
+        */
+        async function initMap() {
+                setupVisuals.clearLayers();
+                snapshotVisuals.clearLayers();
+                try {
+                    const setup = await fetchSetup();
+                    let center = [0, 0];
+                    
+                    // center map about the middle of the nodes
+                    if (setup.nodes.length > 0) {
+                        for (let node of setup.nodes) {
+                            center[0] += node.latitude;
+                            center[1] += node.longitude;
+                        }
+                        center[0] /= setup.nodes.length;
+                        center[1] /= setup.nodes.length;
+                    }
+                    
+                    map.setView(center, 9);
+                    setupVisuals.addTo(map);
+
+                    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 19,
+                        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    }).addTo(map);
+
+                    // show node name when user clicks on it
+                    for (let i = 0; i < setup.nodes.length; i++) {
+                        let node = setup.nodes[i];
+                        node_names.push(node.name);
+                        node_markers.push(new L.marker(new L.LatLng(node.latitude, node.longitude)).bindPopup(node_names[i]));
+                        node_markers[i].addTo(setupVisuals);
+                    }
+
+                    for (let i = 0; i < setup.links.length; i++) {
+                        link_polylines.push(new L.polyline(
+                            [
+                                new L.LatLng(setup.links[i].start_latitude, setup.links[i].start_longitude),
+                                new L.LatLng(setup.links[i].end_latitude, setup.links[i].end_longitude)
+                            ],
+                            {
+                                color: '#000000',
+                                weight: 10,
+                            })
+                        );
+                        link_polylines[i].addTo(setupVisuals);
+                    }
+
+                } catch (error) {
+                    console.error("Error fetching setup:", error);
+                }
+        }
+
+        
+        async function updateSnapshot() {
+            try {
+                    const snapshot = await fetchSnapshot();
+
+
+                    for (let i = 0; i < link_polylines.length; i++) {
+
+                        link_polylines[i].setStyle({
+                            color: interpolateColor(snapshot.link_intensities[i])
+                        });
+                    }
+                    
+                
+                } catch (error) {
+                    console.error("Error fetching snapshot", error);
+                }
+
+            if (selected_node > 0) {
+                try {
+                    await displayNodeInfo(selected_node);
+                } catch (error) {
+                    console.error("Error fetching node info", error);
+                }
+            }
+            if (selected_link > 0) {
+                try {
+                    await displayLinkInfo(selected_link);
+                } catch (error) {
+                    console.error("Error fetching link info", error);
+                }
+            }
+        }        
+
+
+        function displayTable(table) {
+                document.getElementById('infoContent').innerHTML = table;
+                tableOnDisplay = true;
+            }
+
+        function clearTable() {
+            document.getElementById('infoContent').innerHTML = "Click on elements on the map to view details here.";
+            tableOnDisplay = false;
+        }
+
+
+
+        async function displayNodeInfo(node_id) {
+
+            node_vehicles = await fetchNodeInfo(node_id);
+
+            let idleTable = new HtmlTable("Type", "Quantity");
+  
+            for (let vehicle of node_vehicles) {
+                if (vehicle.quantity > 0) {
+                    idleTable.addRow(vehicle.name, vehicle.quantity);
+                }
+            
+            }
+            displayTable(`
+                <h3>${node_names[node_id]}</h3>
+                <h4>Idle Vehicles</h4>
+                ${idleTable.toHtml()}
+            `);
+            selected_node = node_id;
+            selected_link = -1;
+        }
+
+        async function displayLinkInfo(link_id) {
+            link_vehicles = await fetchLinkInfo(link_id);
+
+            let idleTable = new HtmlTable("Type", "Origin", "Destination", "Quantity");
+  
+            for (let vehicle of link_vehicles) {
+                if (vehicle.quantity > 0) {
+                    idleTable.addRow(vehicle.name, node_names[vehicle.origin], node_names[vehicle.destination] ,vehicle.quantity);
+                }
+            
+            }
+            displayTable(
+                idleTable.toHtml()
+            );
+                selected_node = -1;
+                selected_link = link_id;
+        }
+
+
+
+        /*
+        call this the first time clicking Step or Run
+        */
+        function enterSimulation() {
+            enteredSimulation = true;
+
+            map.on('click', () => { // add this event first so it gets overwritten by events added to markers and polylines
+                if (tableOnDisplay) {
+                    clearTable();
+                    selected_node = -1;
+                    selected_link = -1;
+                }
+            });
+
+            for (let i = 0; i < node_markers.length; i++) {
+                let node = node_markers[i]
+                node.unbindPopup(); // remove node name pop up
+
+                node.on('click', () => { // show table of idle vehicles when user clicks on a node
+                    displayNodeInfo(i);
+                });
+            }
+            for (let i = 0; i < link_polylines.length; i++) {
+                link_polylines[i].on('click', () => {
+                    displayLinkInfo(i);
+                });
+            }
+        }
+
+
+        async function runVisualizer() {
+            //wrapper for the visualizer logic
+            await initMap(); // don't do anything until the map loads
+
+
+            document.getElementById('nextSnapshot').addEventListener('click', async () => {
+                updateSnapshot();
+                if (!enteredSimulation) enterSimulation();
+            });
+
+            //-------------------------------logic for run button-----------------------
+            // Toggle the "Run/Pause" state when clicked
+            document.getElementById("autoSnapshot").addEventListener("click", function() {
+                isRunning = !isRunning; // Toggle the running state
+                
+                // Change the button color and text depending on the state
+                const button = document.getElementById("autoSnapshot");
+                const stepButton = document.getElementById("nextSnapshot");
+
+                if (isRunning) {
+                    button.style.backgroundColor = "#ffc107"; // Yellow when running
+                    button.innerText = "Pause";               // Change text to "Pause"
+                    stepButton.disabled = true;               // Disable Step button
+                } else {
+                    button.style.backgroundColor = "#28a745"; // Green when paused
+                    button.innerText = "Run";                 // Change text back to "Run"
+                    stepButton.disabled = false;              // Enable Step button
+                }
+            });
+            //--------------------------------------------------------------------------
+
+        }
+
+
+
+        runVisualizer();
+        
+
+    </script>
+</body>
+</html>
