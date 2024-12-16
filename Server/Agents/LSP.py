@@ -11,7 +11,7 @@ class LSP:
 
     def process_request(self, env, request):
         # Ask carriers for quotes and select the cheapest
-        print("LSP rules!")
+        # print("LSP rules!")
         quotes = [(carrier.id, carrier.quota(env, request)) for carrier in self.carriers]
         selected_carrier, price = min(quotes, key=lambda x: x[1])
 
@@ -22,4 +22,4 @@ class LSP:
     
     def initiate_truck(self, env, request):
         truck = Truck(self, request.id, request.distance)
-        travel_time = truck.estimate_time(env)
+        truck.estimate_time(env)

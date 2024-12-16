@@ -91,18 +91,22 @@ def process_event(env, event, shipper):
 #         event_time, event = get_event()
 #         print("###############")
 #         print_all_ids()
-#         print(f'Event type: {event.type}')
-#         print(f'Event timestamp: {event_time}, Time now: {env.now}')
+        # print(f'Event type: {event.type}')
+        # print(f'Event timestamp: {event_time}, Time now: {env.now}')
 #         yield env.timeout(event_time - env.now)
 #         process_event(env, event, shipper)
 
 def event_handler(env, shipper):
     while not pq_queue_is_empty():
+        print("###############")
+        print_all_ids()
+        print("###############")
         event_time, event = get_event()
+        print(f'Event type: {event.type}')
+        print(f'Event timestamp: {event_time}, Time now: {env.now}')
         if event_time < env.now:
             print(f"[ERROR] Past event! Time now: {env.now}, Event time: {event_time}")
             continue
-
         yield env.timeout(event_time - env.now)
         process_event(env, event, shipper)
 

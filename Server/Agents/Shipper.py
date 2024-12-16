@@ -1,5 +1,5 @@
 from Agents.Misc import Request
-from Simulation.Global import lsps
+from Simulation.Global import *
 
 class Shipper:
     def __init__(self, id):
@@ -12,7 +12,7 @@ class Shipper:
         # Ask  LSPs for quotes and select the cheapest offer
         print(f"Time now: {env.now}, Time window: {request.time_window}")
         quotes = []
-        print("Shipper rules!")
+        # print("Shipper rules!")
         for lsp in self.lsp_list:
             selected_carrier, quote = lsp.process_request(env, request)
             quotes.append((selected_carrier, quote))
@@ -21,6 +21,7 @@ class Shipper:
 
         lsps[selected_lsp].initiate_truck(env, request)
         print(f'CURRENT TIME AFTER PROCESSING: {env.now}')
+        print_all_ids()
         # Schedule truck dispatch when time-window starts
         print(f'Timeout is {request.time_window[0] - env.now}')
         yield env.timeout(request.time_window[0] - env.now)
