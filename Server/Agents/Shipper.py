@@ -1,19 +1,33 @@
 from Agents.Misc import Request
-import Simulation
+from Simulation.Global import *
 
 class Shipper:
     def __init__(self, id):
         self.id = id
-        self.lps_list = []
+        self.lsp_list = []
         self.requests = []
 
     def process_dispatch_request(self, env, request):
 
         # Ask  LSPs for quotes and select the cheapest offer
-        quotes = [()]
-        quotes = [(lsp, env.process(lsp.process_request(env, request))) for lsp in self.lps_list]
-        selected_lsp, quote = min(quotes, key=lambda x: (yield x[1])[1])
+        print(f"Time now: {env.now}, Time window: {request.time_window}")
+        quotes = []
+        # print("Shipper rules!")
+        for lsp in self.lsp_list:
+            selected_carrier, quote = lsp.process_request(env, request)
+            quotes.append((selected_carrier, quote))
         
+        selected_lsp = min(quotes, key=lambda x: x[1])[0]
+
+        lsps[selected_lsp].initiate_truck(env, request)
+        print(f'CURRENT TIME AFTER PROCESSING: {env.now}')
+        print_all_ids()
         # Schedule truck dispatch when time-window starts
-        yield env.timeout(request.time_window - env.now)  # Wait until the time window starts
-        carrier = yield env.process(selected_lsp.dispatch_truck(env, request, selected_lsp.carriers[0]))
+        print(f'Timeout is {request.time_window[0] - env.now}')
+        yield env.timeout(request.time_window[0] - env.now)
+
+    
+    def delivered_request(self, env, request):
+        print(f"Request {request.id} delivered at time {env.now}")
+        self.requests.remove(request)
+        yield 
