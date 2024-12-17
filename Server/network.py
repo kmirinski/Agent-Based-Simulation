@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Tuple, List, Dict
 from router import get_route
 import pandas as pd
+import numpy as np
 import json
 
 
@@ -44,8 +45,8 @@ class Network:
     links: List[Link]
     paths: Dict[Tuple[int, int], List[int]]
     link_id_lookup: Dict[Tuple[float, float, float, float], int] = None
-    link_vehicles: List[Vehicle] = None
-    node_vehicles: List[Vehicle] = None
+    link_vehicles: List[List[Vehicle]] = None
+    node_vehicles: List[List[Vehicle]] = None
     
     def __post_init__(self):
         # Compute link_id_lookup if it is not provided
@@ -59,6 +60,26 @@ class Network:
         if self.node_vehicles is None:
             self.node_vehicles = [[] for _ in self.nodes]
 
+    def update_vehicles(self, vehicle_matrices: Dict[str, np.ndarray]):
+        """
+        Utility function for updating the network
+        Args:
+            vehicle_matrices: a dictionary mapping from vehicle type/name to a 2D numpy array storing the number of vehicles of that type,
+                where entry (i,j) is the number of vehicles of that type going from node index i to index j. Entry (i,i) is the number
+                of vehicles of that type sitting at node index i.
+        """
+        self.link_vehicles = [[] for _ in self.links]
+        self.node_vehicles = [[] for _ in self.nodes] # clear old vehicles
+        
+        for i in range(len(self.nodes)):
+            for j in range(len(self.nodes)): # for each pair of nodes
+                for name, quantities in vehicle_matrices.items():
+                    if quantities[i,j] > 0:
+                        if i == j: # if it's vehicle sitting at node
+                            self.node_vehicles[i].append(Vehicle(name, i, j, quantities[i,j].item())) # item converts np.int64 (not json serializable) to native int
+                        else:
+                            for link_idx in self.paths[(i,j)]:
+                                self.link_vehicles[link_idx].append(Vehicle(name, i, j, quantities[i,j].item()))
 
 def build_network(nodes: pd.DataFrame, connectivity: pd.DataFrame) -> Network:
     """

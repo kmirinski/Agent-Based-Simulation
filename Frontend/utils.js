@@ -23,7 +23,7 @@ async function fetchLinkInfo(link_id, url = "http://localhost:8888/link") {
 }
 
 
-function interpolateColor(intensity, M=100) {
+function interpolateColor(intensity, M=200) {
     // M should be the max resources going through one edge
     let rho = intensity / M;
     rho = Math.min(rho,1); //cap at rho=1

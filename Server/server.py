@@ -5,6 +5,7 @@ import json
 import random
 from network import build_network, Vehicle
 import pandas as pd
+import numpy as np
 
 
 class SetupHandler(tornado.web.RequestHandler):
@@ -136,14 +137,19 @@ if __name__ == "__main__":
         """
         for testing only, randomizes resources in network
         """
+
+        empty_trucks = np.array([
+            [random.randint(1,100), random.randint(1,100), random.randint(1,100)],
+            [0, random.randint(1,100), random.randint(1,100)],
+            [0, random.randint(1,100), random.randint(1,100)]
+        ]) # same nonzero entries as connectivity matrix, except with diagonals
+        containers = np.array([
+            [random.randint(1,100), random.randint(1,100), random.randint(1,100)],
+            [0, random.randint(1,100), random.randint(1,100)],
+            [0, random.randint(1,100), random.randint(1,100)]
+        ]) 
         
-        for origin, destination in network.paths.keys():
-            network.node_vehicles[origin] = [Vehicle("Empty Truck", origin, destination, random.randint(1,100))]
-            for link_id in network.paths[(origin, destination)]:
-                network.link_vehicles[link_id] = [
-                Vehicle("Empty Truck", origin, destination, random.randint(1,100)),
-                Vehicle("Container", origin, destination, random.randint(1,100))
-                ]
+        network.update_vehicles({"Empty Truck": empty_trucks, "Container": containers})
     
 
     asyncio.run(main())
