@@ -1,26 +1,50 @@
-async function fetchSetup(url="http://localhost:8888/setup") {
+async function fetchSetup() {
+    let url="http://localhost:8888/setup";
     const response = await fetch(url);
     const json = await response.json();
     return json;
 }
 
-async function fetchSnapshot(url="http://localhost:8888/snapshot") {
+async function fetchSnapshot(getNext, layerVisibility) {
+    let url=`http://localhost:8888/snapshot`;
+    url = addParameter(url, "next_snapshot", getNext);
+    url = addParameter(url, "visible_vehicles", filterVisibleLayers(layerVisibility));
     const response = await fetch(url);
     const json = await response.json();
     return json;
 }
 
-async function fetchNodeInfo(node_id, url = "http://localhost:8888/node") {
-    const response = await fetch(`${url}?node_id=${node_id}`);
+async function fetchNodeInfo(node_id, layerVisibility) 
+{
+    let url = "http://localhost:8888/node";
+    url = addParameter(url, "node_id", node_id);
+    url = addParameter(url, "visible_vehicles", filterVisibleLayers(layerVisibility));
+    const response = await fetch(url);
     const json = await response.json();
     return json;
 }
 
-async function fetchLinkInfo(link_id, url = "http://localhost:8888/link") {
-    const response = await fetch(`${url}?link_id=${link_id}`);
+async function fetchLinkInfo(link_id, layerVisibility) {
+    let url = "http://localhost:8888/link";
+    url = addParameter(url, "link_id", link_id);
+    url = addParameter(url, "visible_vehicles", filterVisibleLayers(layerVisibility));
+    const response = await fetch(url);
     const json = await response.json();
     return json;
 }
+
+function filterVisibleLayers(layerVisibility) {
+    return Object.keys(layerVisibility).filter(key => layerVisibility[key]); // convert a map from layer name to visibility flag to a list of all visible layers
+}
+
+function addParameter(url, name, value) {
+    
+    const params = new URLSearchParams();
+    params.append(name, JSON.stringify(value));
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}${params.toString()}`;
+}
+
 
 
 function interpolateColor(intensity, M=200) {

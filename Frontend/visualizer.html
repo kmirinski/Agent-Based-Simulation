@@ -88,6 +88,17 @@
             z-index: 1000;           /* Ensure it's above other content */
         }
 
+        #layerContainer {
+            position: absolute;      /* Absolute positioning */
+            bottom: 100px;            /* Position above the buttons */
+            right: 20px;             /* Align with the button container */
+            display: flex;           /* Flexbox for label and slider */
+            flex-direction: row;     /* Place label and slider side-by-side */
+            align-items: center;     /* Center align vertically */
+            gap: 10px;               /* Space between label and slider */
+            z-index: 1000;           /* Ensure it's above other content */
+        }
+
     </style>
 </head>
 <body>
@@ -97,6 +108,13 @@
             <h3>Information</h3>
             <div id="infoContent">Click on elements on the map to view details here.</div>
         </div>
+
+        <div id="layerContainer">
+            <h4>Layers</h4>
+            <div id="layerOptions">
+            </div>
+        </div>
+
         <div id="sliderContainer">
             <label for="speedSlider">Speed: </label>
             <input id="speedSlider" type="range" min="100" max="2000" step="100" value="1000">
@@ -134,6 +152,9 @@
 
         // Tracking the current state of the "Run" button
         let isRunning = false;
+
+        // stores the set of layers to visualize
+        let showLayer = {};
 
         /*
         loads the map, nodes, and links
@@ -185,15 +206,46 @@
                         link_polylines[i].addTo(setupVisuals);
                     }
 
+                    const layerContainer = document.getElementById('layerOptions');
+                    setup.vehicle_types.forEach((type) => { //each vehicle type is a layer
+                        // Initialize the map with `true` (default: all layers visible)
+                        showLayer[type] = true;
+
+                        // Create a checkbox element
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.id = `vehicleType-${type}`;
+                        checkbox.checked = true; // Checked by default
+
+                        // Create a label element
+                        const label = document.createElement('label');
+                        label.setAttribute('for', `vehicleType-${type}`);
+                        label.textContent = type;
+
+                        // Add event listener to update the map when the checkbox state changes
+                        checkbox.addEventListener('change', () => {
+                            showLayer[type] = checkbox.checked;
+                            if (enteredSimulation) {
+                                updateSnapshot(getNext = false);
+                            }
+                        });
+
+                        // Add checkbox and label to the container
+                        const div = document.createElement('div');
+                        div.appendChild(checkbox);
+                        div.appendChild(label);
+                        layerContainer.appendChild(div);
+                    });
+
                 } catch (error) {
                     console.error("Error fetching setup:", error);
                 }
         }
 
         
-        async function updateSnapshot() {
+        async function updateSnapshot(getNext = true) {
             try {
-                    const snapshot = await fetchSnapshot();
+                    const snapshot = await fetchSnapshot(getNext, showLayer);
 
 
                     for (let i = 0; i < link_polylines.length; i++) {
@@ -239,7 +291,7 @@
 
         async function displayNodeInfo(node_id) {
 
-            node_vehicles = await fetchNodeInfo(node_id);
+            node_vehicles = await fetchNodeInfo(node_id, showLayer);
 
             let idleTable = new HtmlTable("Type", "Quantity");
   
@@ -259,7 +311,7 @@
         }
 
         async function displayLinkInfo(link_id) {
-            link_vehicles = await fetchLinkInfo(link_id);
+            link_vehicles = await fetchLinkInfo(link_id, showLayer);
 
             let idleTable = new HtmlTable("Type", "Origin", "Destination", "Quantity");
   
@@ -315,6 +367,8 @@
                 intervalId = setInterval(updateSnapshot, interval); // Start a new interval
             }
         }
+
+
 
 
         async function runVisualizer() {

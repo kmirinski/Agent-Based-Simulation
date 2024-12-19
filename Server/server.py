@@ -24,10 +24,12 @@ class SetupHandler(tornado.web.RequestHandler):
         nodes_data = [asdict(node) for node in network.nodes]  # Convert nodes to dict
         links_data = [asdict(link) for link in network.links]  # Convert links to dict
         
+        
         # Combine into a response
         response = {
             "nodes": nodes_data,
-            "links": links_data
+            "links": links_data,
+            'vehicle_types': ['Empty Truck', 'Container'] # todo: figure out where and how to declare the kinds of vehicles involved in the simulation
         }
 
         # Send the response as JSON
@@ -47,7 +49,8 @@ class NodeHandler(tornado.web.RequestHandler):
     def get(self):
         # Get the node_id from the query parameters, using a default if it's not provided
         node_id = int(self.get_argument("node_id", None))
-        vehicles = [asdict(vehicle) for vehicle in network.node_vehicles[node_id]]
+        visible_vehicles = json.loads(self.get_argument("visible_vehicles"))
+        vehicles = [asdict(vehicle) for vehicle in network.node_vehicles[node_id] if vehicle.name in visible_vehicles]
         self.write(json.dumps(vehicles))
 
 class LinkHandler(tornado.web.RequestHandler):
@@ -63,8 +66,8 @@ class LinkHandler(tornado.web.RequestHandler):
     def get(self):
         # Get the node_id from the query parameters, using a default if it's not provided
         link_id = int(self.get_argument("link_id", None))
-
-        vehicles = [asdict(vehicle) for vehicle in network.link_vehicles[link_id]]
+        visible_vehicles = json.loads(self.get_argument("visible_vehicles"))
+        vehicles = [asdict(vehicle) for vehicle in network.link_vehicles[link_id] if vehicle.name in visible_vehicles]
 
         self.write(json.dumps(vehicles))
     
@@ -77,15 +80,16 @@ class SnapshotHandler(tornado.web.RequestHandler):
         self.set_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
     def get(self): 
-        randomize_snapshot()
-        
-        link_intensites =  [ sum([vehicle.quantity for vehicle in vehicles]) for vehicles in network.link_vehicles] 
+        updateSimulation = json.loads(self.get_argument('next_snapshot'))
+        if updateSimulation:
+            randomize_snapshot()
+        visible_vehicles = json.loads(self.get_argument("visible_vehicles"))
+
+        link_intensites =  [ sum([vehicle.quantity for vehicle in vehicles if vehicle.name in visible_vehicles]) for vehicles in network.link_vehicles] 
         response = {
             "link_intensities": link_intensites
         }
         self.write(json.dumps(response))
-
-
 
 
 def make_app():
