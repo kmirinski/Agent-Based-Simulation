@@ -1,9 +1,10 @@
-import simpy
 import queue
 import numpy as np
 import pandas as pd
+
 from enum import Enum
 from typing import Tuple
+
 from Agents.Shipper import Shipper
 from Agents.LSP import LSP
 from Agents.Carrier import Carrier
@@ -23,6 +24,7 @@ class Agent_Type(Enum):
     SHIPPER = 0
     LSP = 1
     CARRIER = 2
+
 
 class Environment:
     """
@@ -63,22 +65,6 @@ class Environment:
                 event = self.event_queue.get()
                 self.process_event(self, event)
 
-            
-
-def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_matrix: np.ndarray):
-    
-    agents = generate_and_assign_agents(num_shippers, num_lsps, num_carriers)
-    requests, events = create_requests_and_events(agents[Agent_Type.SHIPPER][0], requests_df, dist_matrix)
-    number_of_nodes = len(nodes_df)
-
-    vehicle_matrix = {
-        "Empty Truck": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
-        "Container": np.zeros((number_of_nodes, number_of_nodes), dtype=int)
-    }
-
-    return Environment(requests=requests, agents=agents, 
-                       vehicle_matrix=vehicle_matrix, events=events)
-
 def read_data():
 
     # Read demand
@@ -96,6 +82,7 @@ def read_data():
 
     print(type(dist_matrix))
     return requests_df, nodes_df, dist_matrix
+
 
 def generate_and_assign_agents(num_shippers, num_lsps, num_carriers):
     
@@ -126,7 +113,6 @@ def generate_and_assign_agents(num_shippers, num_lsps, num_carriers):
 
     return agents
 
-# Hardcoded assignment of agents to each other
 
 def create_requests_and_events(requests_df, dist_matrix):
     print(requests_df)
@@ -161,41 +147,20 @@ def create_requests_and_events(requests_df, dist_matrix):
     print("Requests and events created successfully")
     return requests, events
 
-
-def process_event(env, event, shipper):
-
-    if event.type == Event_Type.DISPATCHED:
-        print(f"Time {env.now}: Dispatching request {event.request_id}")
-        env.process(shipper.process_dispatch_request(env, get_request(event.request_id)))
-        print("break")
-    elif event.type == Event_Type.DELIVERED:
-        print(f"Time {env.now}: Delivered request {event.request_id}")
-        env.process(shipper.delivered_request(get_request(event.request_id)))
-    else:
-        print("Event type not recognized")
-
-
-def event_handler(env, shipper):
-    while not pq_queue_is_empty():
-        print("###############")
-        print_all_ids()
-        print("###############")
-        event_time, event = get_event()
-        print(f'Event type: {event.type}')
-        print(f'Event timestamp: {event_time}, Time now: {env.now}')
-        if event_time < env.now:
-            print(f"[ERROR] Past event! Time now: {env.now}, Event time: {event_time}")
-            continue
-        yield env.timeout(event_time - env.now)
-        process_event(env, event, shipper)
-
-
-
-def run_simulation():
+def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_matrix: np.ndarray):
     
-    requests_df, nodes_df, dist_matrix  = read_data()
-    environment = build_environment(requests_df, nodes_df, dist_matrix)
+    agents = generate_and_assign_agents(num_shippers, num_lsps, num_carriers)
+    requests, events = create_requests_and_events(agents[Agent_Type.SHIPPER][0], requests_df, dist_matrix)
+    number_of_nodes = len(nodes_df)
 
-    event_handler(environment)
+    vehicle_matrix = {
+        "Empty Truck": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
+        "Container": np.zeros((number_of_nodes, number_of_nodes), dtype=int)
+    }
 
-    print('Simulation finished suceccefully')
+    return Environment(requests=requests, agents=agents, 
+                       vehicle_matrix=vehicle_matrix, events=events)
+
+def get_snapshot(env: Environment):
+    return env.step()
+
