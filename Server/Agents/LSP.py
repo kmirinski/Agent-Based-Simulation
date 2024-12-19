@@ -1,4 +1,5 @@
 from Agents.Misc import Truck
+from Simulation.Global import *
 
 class LSP:
     def __init__(self, id):
@@ -10,26 +11,15 @@ class LSP:
 
     def process_request(self, env, request):
         # Ask carriers for quotes and select the cheapest
-        quotes = [(carrier, carrier.quote(request)) for carrier in self.carriers]
+        # print("LSP rules!")
+        quotes = [(carrier.id, carrier.quota(env, request)) for carrier in self.carriers]
         selected_carrier, price = min(quotes, key=lambda x: x[1])
-        price_with_margin = price * 1.10  # Adding 10% margin
 
-        # Track accepted container
-        self.containers_not_departed.append(request)
-        
-        # # Notify shipper after 1 hour (delay for the quote process)
-        # yield env.timeout(1)
-        return selected_carrier, price_with_margin
+        # # Track accepted container
+        # self.containers_not_departed.append(request)
 
-    def dispatch_truck(self, env, request, carrier):
-        self.containers_not_departed.remove(request)
-        truck = Truck(carrier, request, request.distance)
-        self.containers_in_transit.append(request)
-
-        # Simulate truck travel
-        yield env.timeout(truck.travel_time)
-
-        # Truck arrived
-        self.containers_in_transit.remove(request)
-        self.containers_delivered.append(request)
-        carrier.assign_container(request, request.distance, truck.travel_time)
+        return selected_carrier, price
+    
+    def initiate_truck(self, env, request):
+        truck = Truck(self, request.id, request.distance)
+        truck.estimate_time(env)
