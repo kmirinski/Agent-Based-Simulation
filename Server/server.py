@@ -126,9 +126,11 @@ if __name__ == "__main__":
         (1, 2),  # Brussel to Antwerp
         (2, 1)   # Antwerp to Brussel
     ]
-    connectivity_df = pd.DataFrame(connectivity_data, columns=['origin', 'destination'])
-    connectivity_df['origin'] = connectivity_df['origin']
-    connectivity_df['destination'] = connectivity_df['destination']
+    
+    connectivity_df = pd.DataFrame({
+        'origin': [pair[0] for pair in connectivity_data],
+        'destination': [pair[1] for pair in connectivity_data]
+    })
 
     network = build_network(nodes_df, connectivity_df)
 

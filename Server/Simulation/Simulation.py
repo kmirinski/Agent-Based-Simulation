@@ -1,19 +1,85 @@
 import simpy
+import queue
+import numpy as np
 import pandas as pd
-from Simulation.Global import *
+from enum import Enum
+from typing import Tuple
 from Agents.Shipper import Shipper
 from Agents.LSP import LSP
 from Agents.Carrier import Carrier
 from Agents.Misc import Request, Event, Event_Type
 
+num_shippers = 1
+num_lsps = 2
+num_carriers = 4
+
+class EventQueue(queue.PriorityQueue):
+    def peek(self):
+        if self.empty():
+            return None
+        return self.queue[0]
+    
+class Agent_Type(Enum):
+    SHIPPER = 0
+    LSP = 1
+    CARRIER = 2
+
+class Environment:
+    """
+    An environment is constructed by:
+        - a counter that keeps track of the current time
+        - a list of the requests in the environment
+        - a dictionary of agents in the environment (key: type of the agent, value: list of the agents of this type)
+        - a dictionary mapping from vehicle type/name to a 2D numpy array storing the number of vehicles of that type,
+                where entry (i,j) is the number of vehicles of that type going from node index i to index j. 
+                Entry (i,i) is the number of vehicles of that type sitting at node index i. 
+        - a priority queue that stores the events happening in the environment - the priority is the timestamp of the event.
+        That means that the earlier the event is happening, the higher the priority.
+    """
+
+    def __init__(self, requests, agents, vehicle_matrix, events):
+        self.time = 0
+        self.requests = requests
+        self.agents = agents
+        self.vehicle_matrix = vehicle_matrix
+        self.events: EventQueue = events
 
 
+
+    def step(self):
+        self.time += 1
+        if(self.time == self.events.peek()):
+            event = self.events.get()
+            self.process_event(self, event)
+
+        return self.vehicle_matrix
+    
+    def step_to_next_event(self):
+        if not self.event_queue.empty():
+            earliest_event = self.event_queue.peek()
+            earliest_event_time = earliest_event[0]
+            if(earliest_event_time > self.time):
+                self.time = earliest_event_time
+                event = self.event_queue.get()
+                self.process_event(self, event)
+
+            
+
+def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_matrix: np.ndarray):
+    
+    agents = generate_and_assign_agents(num_shippers, num_lsps, num_carriers)
+    requests, events = create_requests_and_events(agents[Agent_Type.SHIPPER][0], requests_df, dist_matrix)
+    number_of_nodes = len(nodes_df)
+
+    vehicle_matrix = {
+        "Empty Truck": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
+        "Container": np.zeros((number_of_nodes, number_of_nodes), dtype=int)
+    }
+
+    return Environment(requests=requests, agents=agents, 
+                       vehicle_matrix=vehicle_matrix, events=events)
 
 def read_data():
-    # Read distance matrix
-    with open('Server/instance_files/param_dist.csv') as f:
-        f.readline().strip().split(',')
-        dist_matrix = pd.read_csv(f, header=None).values
 
     # Read demand
     requests_df = pd.read_csv('Server/instance_files/param_demand_5.csv')
@@ -21,51 +87,79 @@ def read_data():
     # Read nodes
     nodes_df = pd.read_csv('Server/instance_files/param_nodes.csv')
 
-    print("Data read successfully")
-    
-    return dist_matrix, requests_df, nodes_df
+    # Read distance matrix
+    with open('Server/instance_files/param_dist.csv') as f:
+        f.readline().strip().split(',')
+        dist_matrix = pd.read_csv(f, header=None).values
 
-def generate_agents(num_shippers, num_lsps, num_carriers):
+    print("Data read successfully")
+
+    print(type(dist_matrix))
+    return requests_df, nodes_df, dist_matrix
+
+def generate_and_assign_agents(num_shippers, num_lsps, num_carriers):
     
+    carriers = []
+    lsps = []
+    shippers = []
+    agents = {}
+
     for i in range(num_carriers):
         carriers.append(Carrier(i))
+    agents[Agent_Type.CARRIER] = carriers
 
     for i in range(num_lsps):
         lsps.append(LSP(i))
+    agents[Agent_Type.LSP] = lsps
     
     for i in range(num_shippers):
         shippers.append(Shipper(i))
+    agents[Agent_Type.SHIPPER] = shippers
 
     print("Agents generated successfully")
 
-# Hardcoded assignment of agents to each other
-def assign_agents(shippers, lsps, carriers):
-    lsps[0].carriers.append(carriers[0])
-    lsps[0].carriers.append(carriers[1])
-    lsps[1].carriers.append(carriers[2])
-    lsps[1].carriers.append(carriers[3])
-    shippers[0].lsp_list = lsps
+    agents[Agent_Type.SHIPPER][0].lsp_list = [agents[Agent_Type.LSP][0], agents[Agent_Type.LSP][1]]
+    agents[Agent_Type.LSP][0].carriers = [agents[Agent_Type.CARRIER][0], agents[Agent_Type.CARRIER][1]]
+    agents[Agent_Type.LSP][1].carriers = [agents[Agent_Type.CARRIER][2], agents[Agent_Type.CARRIER][3]]
+
     print("Agents assigned successfully")
 
-def create_requests(shipper, requests_df, dist_matrix):
+    return agents
+
+# Hardcoded assignment of agents to each other
+
+def create_requests_and_events(requests_df, dist_matrix):
     print(requests_df)
+    requests = []
+    events = EventQueue()
+
     for i in range(len(requests_df)):
         
-        request_id = requests_df.iloc[i]['id']
-        origin = requests_df.iloc[i]['orig']
-        destination = requests_df.iloc[i]['dest']
+        request_id = int(requests_df.iloc[i]['id'])
+        origin = int(requests_df.iloc[i]['orig'])
+        destination = int(requests_df.iloc[i]['dest'])
+        amount = int(requests_df.iloc[i]['amount'])
+        price = int(requests_df.iloc[i]['price'])
+        time_window: Tuple[int, int] = (int(requests_df.iloc[i]['lw']), int(requests_df.iloc[i]['uw']))
+        selected_shipper = int(requests_df.iloc[i]['selected']) - 1
+
         distance = dist_matrix[origin][destination]
-        time_window = [requests_df.iloc[i]['lw'], requests_df.iloc[i]['uw']]
         
-        # Subtracting 1 since the request should be processed 1 hour before it has to be dispatched
-        new_request = Request(request_id, origin, destination, 
-                          requests_df.iloc[i]['amount'], requests_df.iloc[i]['price'], time_window, distance)
-        add_request(request_id, new_request)
+        new_request = Request(
+                id=request_id, origin=origin, 
+                destination=destination, amount=amount, 
+                price=price, time_window=time_window, 
+                selected_shipper=selected_shipper, distance=distance)
         
-        new_event = Event(time_window[0], Event_Type.DISPATCHED, request_id)
-        enqueue_event(time_window[0] - 1, new_event)
-        # event_pq.put((time_window[1], Event(time_window[0], Event_Type.DISPATCH, request_id)))
+        requests.append(new_request)
+
+        spawn_vehicle_event = Event(time_window[0] - 1, Event_Type.SPAWN_VEHICLE, request_id)
+        dispatch_vehicle_event = Event(time_window[0], Event_Type.DISPATCH_VEHICLE, request_id)
+        events.put(spawn_vehicle_event)
+        events.put(dispatch_vehicle_event)
+
     print("Requests and events created successfully")
+    return requests, events
 
 
 def process_event(env, event, shipper):
@@ -73,28 +167,13 @@ def process_event(env, event, shipper):
     if event.type == Event_Type.DISPATCHED:
         print(f"Time {env.now}: Dispatching request {event.request_id}")
         env.process(shipper.process_dispatch_request(env, get_request(event.request_id)))
-        print("kur")
+        print("break")
     elif event.type == Event_Type.DELIVERED:
         print(f"Time {env.now}: Delivered request {event.request_id}")
         env.process(shipper.delivered_request(get_request(event.request_id)))
     else:
         print("Event type not recognized")
-        
 
-
-# def event_handler(env, shipper):
-#     i = 0
-#     while not pq_queue_is_empty():
-#         i += 1
-#         print(i)
-#         print_all_ids()
-#         event_time, event = get_event()
-#         print("###############")
-#         print_all_ids()
-        # print(f'Event type: {event.type}')
-        # print(f'Event timestamp: {event_time}, Time now: {env.now}')
-#         yield env.timeout(event_time - env.now)
-#         process_event(env, event, shipper)
 
 def event_handler(env, shipper):
     while not pq_queue_is_empty():
@@ -111,21 +190,12 @@ def event_handler(env, shipper):
         process_event(env, event, shipper)
 
 
+
 def run_simulation():
-    sim_env = simpy.Environment()
+    
+    requests_df, nodes_df, dist_matrix  = read_data()
+    environment = build_environment(requests_df, nodes_df, dist_matrix)
 
-    num_shippers = 1
-    num_lsps = 2
-    num_carriers = 4
-
-    generate_agents(num_shippers, num_lsps, num_carriers)
-
-    # This is done according to the desired scenario to be simulated (will be automized in the future)
-    assign_agents(shippers, lsps, carriers)
-    dist_matrix, requests_df, nodes_df = read_data()
-    create_requests(shippers[0], requests_df, dist_matrix)
-
-    sim_env.process(event_handler(sim_env, shippers[0]))
-    sim_env.run()
+    event_handler(environment)
 
     print('Simulation finished suceccefully')
