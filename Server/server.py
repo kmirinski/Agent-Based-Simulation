@@ -4,6 +4,7 @@ import asyncio
 import json
 import random
 from network import build_network, Vehicle
+from environment import build_environment
 import pandas as pd
 import numpy as np
 
@@ -102,9 +103,7 @@ async def main():
     await asyncio.Event().wait()
 
 
-
-
-if __name__ == "__main__":
+def read_data_network():
     city_names = ["Amsterdam", "Brussel", "Antwerp"]
     city_coordinates = [
         [4.9041, 52.3676],
@@ -126,14 +125,34 @@ if __name__ == "__main__":
         (1, 2),  # Brussel to Antwerp
         (2, 1)   # Antwerp to Brussel
     ]
-    
+
     connectivity_df = pd.DataFrame({
         'origin': [pair[0] for pair in connectivity_data],
         'destination': [pair[1] for pair in connectivity_data]
     })
 
-    network = build_network(nodes_df, connectivity_df)
+    return nodes_df, connectivity_df
 
+def read_data_environment():
+    requests_df = pd.read_csv('Server/instance_files/param_demand_5.csv')
+    nodes_df = pd.read_csv('Server/instance_files/param_nodes.csv')
+
+    with open('Server/instance_files/param_dist.csv') as f:
+        f.readline().strip().split(',')
+        dist_matrix = pd.read_csv(f, header=None).values
+
+    print("Data read successfully")
+
+    return requests_df, nodes_df, dist_matrix
+
+
+if __name__ == "__main__":
+    
+    nodes_df, connectivity_df = read_data_network()
+    requests_df, nodes_df, dist_matrix = read_data_environment()
+
+    network = build_network(nodes_df, connectivity_df)
+    environment = build_environment(requests_df, nodes_df, dist_matrix)
 
     def randomize_snapshot():
         """
@@ -152,6 +171,9 @@ if __name__ == "__main__":
         ]) 
         
         network.update_vehicles({"Empty Truck": empty_trucks, "Container": containers})
+    
+    def get_snapshot():
+        environment.step()
     
 
     asyncio.run(main())

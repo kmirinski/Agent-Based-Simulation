@@ -65,24 +65,6 @@ class Environment:
                 event = self.event_queue.get()
                 self.process_event(self, event)
 
-def read_data():
-
-    # Read demand
-    requests_df = pd.read_csv('Server/instance_files/param_demand_5.csv')
-
-    # Read nodes
-    nodes_df = pd.read_csv('Server/instance_files/param_nodes.csv')
-
-    # Read distance matrix
-    with open('Server/instance_files/param_dist.csv') as f:
-        f.readline().strip().split(',')
-        dist_matrix = pd.read_csv(f, header=None).values
-
-    print("Data read successfully")
-
-    print(type(dist_matrix))
-    return requests_df, nodes_df, dist_matrix
-
 
 def generate_and_assign_agents(num_shippers, num_lsps, num_carriers):
     

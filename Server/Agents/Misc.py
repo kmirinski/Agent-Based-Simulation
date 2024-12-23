@@ -1,6 +1,5 @@
 import random
 import math
-from Simulation.Global import *
 from typing import Tuple
 
 from dataclasses import dataclass
