@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from enum import Enum
+from typing import Tuple
 
 @dataclass
 class Node:
@@ -22,3 +24,31 @@ class Vehicle:
     origin: int
     destination: int
     quantity: int
+    distance: int
+    remaining_distance: int
+    speed: int
+
+class Event_Type(Enum):
+    SPAWN_VEHICLE = 0
+    DISPATCH_VEHICLE = 1
+    DELIVER = 2
+
+@dataclass
+class Request:
+    id: int
+    origin: int                     # Node ID
+    destination: int                # Node ID
+    amount: int
+    price: int
+    time_window: Tuple[int, int]    # Lower and upper bounds
+    selected_shipper: int
+    distance: int
+
+@dataclass
+class Event:
+    timestamp: int
+    type: Event_Type
+    request_id: int
+    
+    def __lt__(self, other: 'Event'):
+        return self.timestamp < other.timestamp

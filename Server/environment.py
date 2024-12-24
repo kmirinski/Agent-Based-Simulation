@@ -6,10 +6,9 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import Tuple, List, Dict
 
-from Agents.Shipper import Shipper
-from Agents.LSP import LSP
-from Agents.Carrier import Carrier
-from Agents.Misc import Request, Event, Event_Type
+from agents import Shipper, LSP, Carrier
+
+from common import Vehicle, Request, Event, Event_Type
 
 num_shippers = 1
 num_lsps = 2
@@ -83,9 +82,9 @@ class Environment:
 
     def spawn_vehicle(self, event):
         request = self.requests[event.request_id]
-        selected_shipper = self.agents[Agent_Type.SHIPPER][request.selected_shipper]
+        selected_shipper: Shipper = self.agents[Agent_Type.SHIPPER][request.selected_shipper]
 
-        generated_vehicle = selected_shipper.generate_vehicle(request)
+        generated_vehicle: Vehicle = selected_shipper.generate_vehicle(request)
 
         
 
