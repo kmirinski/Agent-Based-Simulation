@@ -1,33 +1,16 @@
-from dataclasses import dataclass
-from typing import Tuple, List, Dict
-from router import get_route
 import pandas as pd
 import numpy as np
 import json
 
+from dataclasses import dataclass
+from typing import Tuple, List, Dict
 
-@dataclass
-class Node:
-    name: str
-    longitude: float
-    latitude: float
+from common import Node, Link, Vehicle
+from router import get_route
 
-@dataclass
-class Link:
-    start_longitude: float
-    start_latitude: float
-    end_longitude: float
-    end_latitude: float
 
-@dataclass
-class Vehicle:
-    """
-    A type of vehicle is defined by it's type name (e.g. empty trucks and containers), origin node (ID), destination node (ID), and quantity
-    """
-    name: str
-    origin: int
-    destination: int
-    quantity: int
+
+
 
 @dataclass
 class Network:
