@@ -132,7 +132,7 @@ def create_requests_and_events(requests_df, dist_matrix):
 def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_matrix: np.ndarray):
     
     agents = generate_and_assign_agents(num_shippers, num_lsps, num_carriers)
-    requests, events = create_requests_and_events(agents[Agent_Type.SHIPPER][0], requests_df, dist_matrix)
+    requests, events = create_requests_and_events(requests_df, dist_matrix)
     number_of_nodes = len(nodes_df)
 
     vehicle_matrix = {
@@ -140,6 +140,8 @@ def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_ma
         "Container": np.zeros((number_of_nodes, number_of_nodes), dtype=int)
     }
 
+    print("Environment built successfully")
+    
     return Environment(requests=requests, agents=agents, 
                        vehicle_matrix=vehicle_matrix, events=events)
 

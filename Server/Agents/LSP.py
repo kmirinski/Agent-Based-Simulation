@@ -1,5 +1,4 @@
 from Agents.Misc import Truck
-from Simulation.Global import *
 
 class LSP:
     def __init__(self, id):

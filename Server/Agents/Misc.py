@@ -26,6 +26,9 @@ class Event:
     timestamp: int
     type: Event_Type
     request_id: int
+    
+    def __lt__(self, other: 'Event'):
+        return self.timestamp < other.timestamp
 
 
 class Truck:

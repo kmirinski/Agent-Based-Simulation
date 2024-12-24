@@ -126,10 +126,9 @@ def read_data_network():
         (2, 1)   # Antwerp to Brussel
     ]
 
-    connectivity_df = pd.DataFrame({
-        'origin': [pair[0] for pair in connectivity_data],
-        'destination': [pair[1] for pair in connectivity_data]
-    })
+    connectivity_df = pd.DataFrame(connectivity_data, columns=['origin', 'destination'])
+    connectivity_df['origin'] = connectivity_df['origin']
+    connectivity_df['destination'] = connectivity_df['destination']
 
     return nodes_df, connectivity_df
 
@@ -148,11 +147,11 @@ def read_data_environment():
 
 if __name__ == "__main__":
     
-    nodes_df, connectivity_df = read_data_network()
-    requests_df, nodes_df, dist_matrix = read_data_environment()
+    nodes_df_network, connectivity_df = read_data_network()
+    requests_df, nodes_df_env, dist_matrix = read_data_environment()
 
-    network = build_network(nodes_df, connectivity_df)
-    environment = build_environment(requests_df, nodes_df, dist_matrix)
+    network = build_network(nodes_df_network, connectivity_df)
+    environment = build_environment(requests_df, nodes_df_env, dist_matrix)
 
     def randomize_snapshot():
         """

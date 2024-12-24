@@ -1,5 +1,4 @@
 from Agents.Misc import Request
-from Simulation.Global import *
 
 class Shipper:
     def __init__(self, id):
