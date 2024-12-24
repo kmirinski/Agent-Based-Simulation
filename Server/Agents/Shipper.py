@@ -4,7 +4,6 @@ class Shipper:
     def __init__(self, id):
         self.id = id
         self.lsp_list = []
-        self.requests = []
 
     def process_dispatch_request(self, env, request):
 

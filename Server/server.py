@@ -153,6 +153,8 @@ if __name__ == "__main__":
     network = build_network(nodes_df_network, connectivity_df)
     environment = build_environment(requests_df, nodes_df_env, dist_matrix)
 
+    # environment.events.print_all_events()
+
     def randomize_snapshot():
         """
         for testing only, randomizes resources in network

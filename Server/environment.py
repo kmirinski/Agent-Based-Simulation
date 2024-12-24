@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 
 from enum import Enum
-from typing import Tuple
+from dataclasses import dataclass
+from typing import Tuple, List, Dict
 
 from Agents.Shipper import Shipper
 from Agents.LSP import LSP
@@ -20,12 +21,17 @@ class EventQueue(queue.PriorityQueue):
             return None
         return self.queue[0]
     
+    def print_all_events(self):
+        print("Events in the queue:")
+        for event in self.queue:
+            print(event)
+    
 class Agent_Type(Enum):
     SHIPPER = 0
     LSP = 1
     CARRIER = 2
 
-
+@dataclass
 class Environment:
     """
     An environment is constructed by:
@@ -39,14 +45,11 @@ class Environment:
         That means that the earlier the event is happening, the higher the priority.
     """
 
-    def __init__(self, requests, agents, vehicle_matrix, events):
-        self.time = 0
-        self.requests = requests
-        self.agents = agents
-        self.vehicle_matrix = vehicle_matrix
-        self.events: EventQueue = events
-
-
+    time: int = 0
+    requests: List[Request] = None
+    agents: Dict[Agent_Type, List] = None
+    vehicle_matrix: Dict[str, np.ndarray] = None
+    events: EventQueue = None
 
     def step(self):
         self.time += 1
@@ -64,6 +67,34 @@ class Environment:
                 self.time = earliest_event_time
                 event = self.event_queue.get()
                 self.process_event(self, event)
+    
+    def process_event(self, event):
+        if(event.event_type == Event_Type.SPAWN_VEHICLE):
+            self.spawn_vehicle(self, event)
+            print("Spawn vehicle event")
+        elif(event.event_type == Event_Type.DISPATCH_VEHICLE):
+            self.dispatch_vehicle(self, event)
+            print("Dispatch vehicle event")
+        elif(event.event_type == Event_Type.DELIVER):
+            self.deliver(self, event)
+            print("Deliver vehicle event")
+        else:
+            print("Unknown event type")
+
+    def spawn_vehicle(self, event):
+        request = self.requests[event.request_id]
+        selected_shipper = self.agents[Agent_Type.SHIPPER][request.selected_shipper]
+
+        generated_vehicle = selected_shipper.generate_vehicle(request)
+
+        
+
+    def dispatch_vehicle(self, event):
+        pass
+
+    def deliver(self, event):
+        pass
+
 
 
 def generate_and_assign_agents(num_shippers, num_lsps, num_carriers):
@@ -141,7 +172,7 @@ def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_ma
     }
 
     print("Environment built successfully")
-    
+
     return Environment(requests=requests, agents=agents, 
                        vehicle_matrix=vehicle_matrix, events=events)
 
