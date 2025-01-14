@@ -33,6 +33,11 @@ class Event_Type(Enum):
     DISPATCH_VEHICLE = 1
     DELIVER = 2
 
+class Agent_Type(Enum):
+    SHIPPER = 0
+    LSP = 1
+    CARRIER = 2
+
 @dataclass
 class Request:
     id: int

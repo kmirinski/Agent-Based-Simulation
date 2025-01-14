@@ -1,23 +1,30 @@
 import random
+from typing import List, Tuple
 
-from common import Vehicle
+from common import Vehicle, Request
 
-price = 100     # We assume the price is 100 per hour
+price = 1     # We assume the price is 100 per hour
 
 class Shipper:
     def __init__(self, id):
         self.id = id
         self.lsp_list = []
 
-    def generate_vehicle(self, request):
+    def generate_vehicle(self, request: Request):
+        quotes = []
         for lsp in self.lsp_list:
-            pass
+            quotes.append(lsp.process_request(request))
         
+        selected_carrier, _ = min(quotes, key=lambda x: x[1])
+
+
         speed = 60
         vehicle = Vehicle(name="Empty Truck", origin=request.origin,
                           destination=request.destination, quantity=1,
                           distance=request.distance, remaining_distance=request.distance,
                           speed=speed)
+        
+        selected_carrier.vehicles.append(vehicle)
         return vehicle
 
     # def process_dispatch_request(self, env, request):
@@ -54,34 +61,27 @@ class LSP:
         self.containers_in_transit = []
         self.containers_delivered = []
 
-    def process_request(self, env, request):
-        # Ask carriers for quotes and select the cheapest
-        # print("LSP rules!")
-        quotes = [(carrier.id, carrier.quota(env, request)) for carrier in self.carriers]
+    def process_request(self, request):
+        quotes = [(carrier, carrier.quota(request)) for carrier in self.carriers]
         selected_carrier, price = min(quotes, key=lambda x: x[1])
 
-        # # Track accepted container
-        # self.containers_not_departed.append(request)
+
+    def process_request(self, request: Request):
+        # Ask carriers for quotes and select the cheapest
+        # print("LSP rules!")
+        
+        quotes = [(carrier.id, carrier.quota(request)) for carrier in self.carriers]
+        selected_carrier, price = min(quotes, key=lambda x: x[1])
 
         return selected_carrier, price
-    
-    def initiate_truck(self, env, request):
-        truck = Truck(self, request.id, request.distance)
-        truck.estimate_time(env)
 
 
 class Carrier:
     def __init__(self, id):
         self.id = id
-        self.assigned_containers = []
-        self.total_distance = 0
-        self.total_travel_time = 0
-        self.estimated_average_speed = 50         # HARDCODED
-    
-    # Initiates a truck to deliver and returns the price
+        vehicles: List[Vehicle] = []
 
-    def quota(self, env, request):
-        # print(f"Distance: {self.distance}, Average Speed: {self.average_speed}, Travel Time: {self.travel_time}")
-        # print("Carrier rules!")
-        travel_time = request.distance / self.estimated_average_speed
-        return travel_time * price
+    def quota(self, request: Request):
+        return price * request.distance
+
+        

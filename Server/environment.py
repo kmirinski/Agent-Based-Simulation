@@ -8,7 +8,7 @@ from typing import Tuple, List, Dict
 
 from agents import Shipper, LSP, Carrier
 
-from common import Vehicle, Request, Event, Event_Type
+from common import Vehicle, Request, Event, Event_Type, Agent_Type
 
 num_shippers = 1
 num_lsps = 2
@@ -24,11 +24,6 @@ class EventQueue(queue.PriorityQueue):
         print("Events in the queue:")
         for event in self.queue:
             print(event)
-    
-class Agent_Type(Enum):
-    SHIPPER = 0
-    LSP = 1
-    CARRIER = 2
 
 @dataclass
 class Environment:
@@ -80,19 +75,35 @@ class Environment:
         else:
             print("Unknown event type")
 
-    def spawn_vehicle(self, event):
-        request = self.requests[event.request_id]
+    def spawn_vehicle(self, event: Event):
+        request_id = event.request_id
+        request : Request = self.requests[request_id]
+        origin = request.origin
+        
         selected_shipper: Shipper = self.agents[Agent_Type.SHIPPER][request.selected_shipper]
 
-        generated_vehicle: Vehicle = selected_shipper.generate_vehicle(request)
-
-        
+        self.vehicle_matrix["Trucks"][origin][origin] += 1
+        print(f"Vehicle spawned")
 
     def dispatch_vehicle(self, event):
-        pass
+        request_id = event.request_id
+        request : Request = self.requests[request_id]
+        origin = request.origin
+        destination = request.destination
+
+        self.vehicle_matrix["Trucks"][origin][origin] -= 1
+        self.vehicle_matrix["Trucks"][origin][destination] += 1
+        print(f"Vehicle dispatched")
 
     def deliver(self, event):
-        pass
+        request_id = event.request_id
+        request : Request = self.requests[request_id]
+        origin = request.origin
+        destination = request.destination
+
+        self.vehicle_matrix["Trucks"][origin][destination] -= 1
+        self.vehicle_matrix["Trucks"][destination][destination] += 1
+        print(f"Vehicle delivered")
 
 
 
@@ -120,6 +131,7 @@ def generate_and_assign_agents(num_shippers, num_lsps, num_carriers):
     agents[Agent_Type.SHIPPER][0].lsp_list = [agents[Agent_Type.LSP][0], agents[Agent_Type.LSP][1]]
     agents[Agent_Type.LSP][0].carriers = [agents[Agent_Type.CARRIER][0], agents[Agent_Type.CARRIER][1]]
     agents[Agent_Type.LSP][1].carriers = [agents[Agent_Type.CARRIER][2], agents[Agent_Type.CARRIER][3]]
+    print(f'AAAAAAAAAAA: {type(agents[Agent_Type.SHIPPER][0].lsp_list[0])}')
 
     print("Agents assigned successfully")
 
@@ -166,8 +178,7 @@ def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_ma
     number_of_nodes = len(nodes_df)
 
     vehicle_matrix = {
-        "Empty Truck": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
-        "Container": np.zeros((number_of_nodes, number_of_nodes), dtype=int)
+        "Trucks": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
     }
 
     print("Environment built successfully")

@@ -3,6 +3,7 @@ import tornado
 import asyncio
 import json
 import random
+from typing import Dict
 from network import build_network, Vehicle
 from environment import build_environment
 import pandas as pd
@@ -79,6 +80,7 @@ class SnapshotHandler(tornado.web.RequestHandler):
 
     def get(self): 
         randomize_snapshot()
+        # get_snapshot()
         
         link_intensites =  [ sum([vehicle.quantity for vehicle in vehicles]) for vehicles in network.link_vehicles] 
         response = {
@@ -174,7 +176,8 @@ if __name__ == "__main__":
         network.update_vehicles({"Empty Truck": empty_trucks, "Container": containers})
     
     def get_snapshot():
-        environment.step()
+        vehicle_matrix = environment.step()
+        network.update_vehicles(vehicle_matrix)
     
 
     asyncio.run(main())
