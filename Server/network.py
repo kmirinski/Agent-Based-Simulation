@@ -1,33 +1,16 @@
-from dataclasses import dataclass
-from typing import Tuple, List, Dict
-from router import get_route
 import pandas as pd
 import numpy as np
 import json
 
+from dataclasses import dataclass
+from typing import Tuple, List, Dict
 
-@dataclass
-class Node:
-    name: str
-    longitude: float
-    latitude: float
+from common import Node, Link, Vehicle, NetworkVehicle
+from router import get_route
 
-@dataclass
-class Link:
-    start_longitude: float
-    start_latitude: float
-    end_longitude: float
-    end_latitude: float
 
-@dataclass
-class Vehicle:
-    """
-    A type of vehicle is defined by it's type name (e.g. empty trucks and containers), origin node (ID), destination node (ID), and quantity
-    """
-    name: str
-    origin: int
-    destination: int
-    quantity: int
+
+
 
 @dataclass
 class Network:
@@ -76,10 +59,10 @@ class Network:
                 for name, quantities in vehicle_matrices.items():
                     if quantities[i,j] > 0:
                         if i == j: # if it's vehicle sitting at node
-                            self.node_vehicles[i].append(Vehicle(name, i, j, quantities[i,j].item())) # item converts np.int64 (not json serializable) to native int
+                            self.node_vehicles[i].append(NetworkVehicle(name, i, j, quantities[i,j].item())) # item converts np.int64 (not json serializable) to native int
                         else:
                             for link_idx in self.paths[(i,j)]:
-                                self.link_vehicles[link_idx].append(Vehicle(name, i, j, quantities[i,j].item()))
+                                self.link_vehicles[link_idx].append(NetworkVehicle(name, i, j, quantities[i,j].item()))
 
 def build_network(nodes: pd.DataFrame, connectivity: pd.DataFrame) -> Network:
     """
