@@ -48,12 +48,13 @@ class Environment:
     def step(self):
         self.time += 1
         print(f"Time: {self.time}")
-        self.events.print_all_events()
+        # self.events.print_all_events()
         top_event : Event = self.events.peek()
         if(self.time == top_event.timestamp):
             event = self.events.get()
             self.process_event(event)
 
+        # print(self.vehicle_matrix["Trucks"])
         return self.vehicle_matrix
     
     def step_to_next_event(self):
@@ -82,8 +83,15 @@ class Environment:
     def spawn_vehicle(self, event: Event):
         request_id = event.request_id
         request : Request = self.requests[request_id]
+        shipper_id = request.selected_shipper
+        shipper : Shipper = self.agents[Agent_Type.SHIPPER][shipper_id]
         origin = request.origin
 
+        delivery_time = shipper.contact_lsps(request)
+
+        delivery_event = Event(self.time + delivery_time + 1, Event_Type.DELIVER, request_id)
+        self.events.put(delivery_event)
+ 
         self.vehicle_matrix["Trucks"][origin][origin] += 1
         print(f"Vehicle spawned")
 
@@ -169,9 +177,6 @@ def create_requests_and_events(requests_df, dist_matrix):
         dispatch_vehicle_event = Event(time_window[0], Event_Type.DISPATCH_VEHICLE, request_id)
         events.put(spawn_vehicle_event)
         events.put(dispatch_vehicle_event)
-        
-    dummy_event = Event(2, Event_Type.SPAWN_VEHICLE, 1)
-    events.put(dummy_event)
 
     print("Requests and events created successfully")
     return requests, events
