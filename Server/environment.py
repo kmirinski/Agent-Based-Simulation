@@ -46,6 +46,7 @@ class Environment:
     events: EventQueue = None
 
     def step(self):
+        print(f"Time: {self.time}")
         self.time += 1
         if(self.time == self.events.peek()):
             event = self.events.get()
@@ -79,8 +80,6 @@ class Environment:
         request_id = event.request_id
         request : Request = self.requests[request_id]
         origin = request.origin
-        
-        selected_shipper: Shipper = self.agents[Agent_Type.SHIPPER][request.selected_shipper]
 
         self.vehicle_matrix["Trucks"][origin][origin] += 1
         print(f"Vehicle spawned")

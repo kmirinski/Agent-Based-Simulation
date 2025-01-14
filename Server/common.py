@@ -28,6 +28,16 @@ class Vehicle:
     remaining_distance: int
     speed: int
 
+@dataclass
+class NetworkVehicle:
+    """
+    A type of vehicle is defined by it's type name (e.g. empty trucks and containers), origin node (ID), destination node (ID), and quantity
+    """
+    name: str
+    origin: int
+    destination: int
+    quantity: int
+
 class Event_Type(Enum):
     SPAWN_VEHICLE = 0
     DISPATCH_VEHICLE = 1

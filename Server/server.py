@@ -79,8 +79,8 @@ class SnapshotHandler(tornado.web.RequestHandler):
         self.set_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
     def get(self): 
-        randomize_snapshot()
-        # get_snapshot()
+        # randomize_snapshot()
+        get_snapshot()
         
         link_intensites =  [ sum([vehicle.quantity for vehicle in vehicles]) for vehicles in network.link_vehicles] 
         response = {
