@@ -46,13 +46,16 @@ class Environment:
     events: EventQueue = None
 
     def step(self):
-        self.time += 1
-        print(f"Time: {self.time}")
         # self.events.print_all_events()
-        top_event : Event = self.events.peek()
-        if(self.time == top_event.timestamp):
-            event = self.events.get()
-            self.process_event(event)
+        if(not self.events.empty()):
+            self.time += 1
+            print(f"Time: {self.time}")
+            top_event : Event = self.events.peek()
+            if(self.time == top_event.timestamp):
+                event = self.events.get()
+                self.process_event(event)
+        else:
+            print("No events in the queue. Simulation ended.")
 
         # print(self.vehicle_matrix["Trucks"])
         return self.vehicle_matrix
@@ -67,7 +70,6 @@ class Environment:
                 self.process_event(self, event)
     
     def process_event(self, event: Event):
-        print("Kur")
         if(event.type == Event_Type.SPAWN_VEHICLE):
             self.spawn_vehicle(event)
             print("Spawn vehicle event")
