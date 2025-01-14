@@ -46,11 +46,13 @@ class Environment:
     events: EventQueue = None
 
     def step(self):
-        print(f"Time: {self.time}")
         self.time += 1
-        if(self.time == self.events.peek()):
+        print(f"Time: {self.time}")
+        self.events.print_all_events()
+        top_event : Event = self.events.peek()
+        if(self.time == top_event.timestamp):
             event = self.events.get()
-            self.process_event(self, event)
+            self.process_event(event)
 
         return self.vehicle_matrix
     
@@ -63,15 +65,16 @@ class Environment:
                 event = self.event_queue.get()
                 self.process_event(self, event)
     
-    def process_event(self, event):
-        if(event.event_type == Event_Type.SPAWN_VEHICLE):
-            self.spawn_vehicle(self, event)
+    def process_event(self, event: Event):
+        print("Kur")
+        if(event.type == Event_Type.SPAWN_VEHICLE):
+            self.spawn_vehicle(event)
             print("Spawn vehicle event")
-        elif(event.event_type == Event_Type.DISPATCH_VEHICLE):
-            self.dispatch_vehicle(self, event)
+        elif(event.type == Event_Type.DISPATCH_VEHICLE):
+            self.dispatch_vehicle(event)
             print("Dispatch vehicle event")
-        elif(event.event_type == Event_Type.DELIVER):
-            self.deliver(self, event)
+        elif(event.type == Event_Type.DELIVER):
+            self.deliver(event)
             print("Deliver vehicle event")
         else:
             print("Unknown event type")
@@ -166,6 +169,9 @@ def create_requests_and_events(requests_df, dist_matrix):
         dispatch_vehicle_event = Event(time_window[0], Event_Type.DISPATCH_VEHICLE, request_id)
         events.put(spawn_vehicle_event)
         events.put(dispatch_vehicle_event)
+        
+    dummy_event = Event(2, Event_Type.SPAWN_VEHICLE, 1)
+    events.put(dummy_event)
 
     print("Requests and events created successfully")
     return requests, events
