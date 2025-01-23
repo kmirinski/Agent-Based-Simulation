@@ -51,6 +51,9 @@ class Environment:
             self.time += 1
             print(f"Time: {self.time}")
             while(True):
+                if (self.events.empty()):
+                    print("No events in the queue. Simulation ended.")
+                    break
                 top_event : Event = self.events.peek()
                 if(self.time == top_event.timestamp):
                     event = self.events.get()
@@ -59,9 +62,6 @@ class Environment:
                     break
         else:
             print("No events in the queue. Simulation ended.")
-
-        # print(self.vehicle_matrix["Trucks"])
-        return self.vehicle_matrix
     
     def step_to_next_event(self):
         if not self.event_queue.empty():
