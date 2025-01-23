@@ -50,10 +50,13 @@ class Environment:
         if(not self.events.empty()):
             self.time += 1
             print(f"Time: {self.time}")
-            top_event : Event = self.events.peek()
-            if(self.time == top_event.timestamp):
-                event = self.events.get()
-                self.process_event(event)
+            while(True):
+                top_event : Event = self.events.peek()
+                if(self.time == top_event.timestamp):
+                    event = self.events.get()
+                    self.process_event(event)
+                else:
+                    break
         else:
             print("No events in the queue. Simulation ended.")
 
