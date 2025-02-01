@@ -64,12 +64,13 @@ class Network:
                             for link_idx in self.paths[(i,j)]:
                                 self.link_vehicles[link_idx].append(NetworkVehicle(name, i, j, quantities[i,j].item()))
 
-def build_network(nodes: pd.DataFrame, connectivity: pd.DataFrame) -> Network:
+def build_network(nodes: pd.DataFrame, connectivity: pd.DataFrame, routes=None) -> Network:
     """
     Build a network by reading from nodes and connectivity.
     Args:
         nodes (pd.DataFrame): DataFrame with columns ['long_name', 'longitude', 'latitude'].
         connectivity (pd.DataFrame): DataFrame with columns ['origin', 'destination'].
+        routes (dict): Dictionary mapping from (origin id, destination id) to a list of (longitude, latitude) tuples.
     Returns:
         Network: Constructed network with nodes, links, paths, and link_id_lookup.
     """
@@ -82,7 +83,7 @@ def build_network(nodes: pd.DataFrame, connectivity: pd.DataFrame) -> Network:
     unique_links = {}  # Dictionary to store unique links as key-value pairs
     links = []  # List to hold the unique Link objects
     paths = {}  # Dictionary to hold the paths
-
+ 
     # Iterate over the connectivity data to create paths and populate links
     for _, row in connectivity.iterrows():
         origin_id = int(row['origin']) # NB: numpy int cannot be serialized to JSON, so we need to convert to native int
@@ -92,11 +93,15 @@ def build_network(nodes: pd.DataFrame, connectivity: pd.DataFrame) -> Network:
         origin_node = node_list[origin_id]
         dest_node = node_list[destination_id]
         
-        # Fetch route using get_route
-        route = get_route(
-            origin_node.longitude, origin_node.latitude,
-            dest_node.longitude, dest_node.latitude
-        )
+        if routes is None:
+            # Fetch route using get_route if routes isn't provided
+            route = get_route(
+                origin_node.longitude, origin_node.latitude,
+                dest_node.longitude, dest_node.latitude
+            )
+        else:
+            # Use the provided routes
+            route = routes[(origin_id, destination_id)]
         
         # Map the route to link IDs
         link_ids = []
