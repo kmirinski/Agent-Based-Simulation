@@ -15,7 +15,6 @@ class Carrier:
         speed = 60 + random.randint(-10, 10)
         time = distance / speed
         price = time * self.price_per_hour
-        time = int(math.ceil(time))
         return price, time 
     
 class LSP:

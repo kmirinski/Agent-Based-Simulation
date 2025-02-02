@@ -44,24 +44,26 @@ class Environment:
     agents: Dict[Agent_Type, List] = None
     vehicle_matrix: Dict[str, np.ndarray] = None
     events: EventQueue = None
+    step_size: int = 0
 
     def step(self):
-        # self.events.print_all_events()
+        self.events.print_all_events()
         if(not self.events.empty()):
-            self.time += 1
+            self.time += self.step_size
             print(f"Time: {self.time}")
             while(True):
                 if (self.events.empty()):
                     print("No events in the queue. Simulation ended.")
                     break
                 top_event : Event = self.events.peek()
-                if(self.time == top_event.timestamp):
+                if(self.time >= top_event.timestamp):
                     event = self.events.get()
                     self.process_event(event)
                 else:
                     break
         else:
             print("No events in the queue. Simulation ended.")
+        return self.vehicle_matrix
     
     def step_to_next_event(self):
         if not self.event_queue.empty():
@@ -186,7 +188,7 @@ def create_requests_and_events(requests_df, dist_matrix):
     print("Requests and events created successfully")
     return requests, events
 
-def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_matrix: np.ndarray):
+def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_matrix: np.ndarray, step_size: int):
     
     agents = generate_and_assign_agents(num_shippers, num_lsps, num_carriers)
     requests, events = create_requests_and_events(requests_df, dist_matrix)
@@ -199,7 +201,7 @@ def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_ma
     print("Environment built successfully")
 
     return Environment(requests=requests, agents=agents, 
-                       vehicle_matrix=vehicle_matrix, events=events)
+                       vehicle_matrix=vehicle_matrix, events=events, step_size=step_size)
 
 def get_snapshot(env: Environment):
     return env.step()
