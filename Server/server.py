@@ -151,9 +151,10 @@ if __name__ == "__main__":
     
     nodes_df_network, connectivity_df = read_data_network()
     requests_df, nodes_df_env, dist_matrix = read_data_environment()
+    step_size = 5
 
     network = build_network(nodes_df_network, connectivity_df)
-    environment = build_environment(requests_df, nodes_df_env, dist_matrix)
+    environment = build_environment(requests_df, nodes_df_env, dist_matrix, step_size)
 
     # environment.events.print_all_events()
 
