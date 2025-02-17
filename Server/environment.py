@@ -47,7 +47,7 @@ class Environment:
     step_size: int = 0
 
     def step(self):
-        self.events.print_all_events()
+        # self.events.print_all_events()
         if(not self.events.empty()):
             self.time += self.step_size
             print(f"Time: {self.time}")
@@ -64,15 +64,6 @@ class Environment:
         else:
             print("No events in the queue. Simulation ended.")
         return self.vehicle_matrix
-    
-    def step_to_next_event(self):
-        if not self.event_queue.empty():
-            earliest_event = self.event_queue.peek()
-            earliest_event_time = earliest_event[0]
-            if(earliest_event_time > self.time):
-                self.time = earliest_event_time
-                event = self.event_queue.get()
-                self.process_event(self, event)
     
     def process_event(self, event: Event):
         if(event.type == Event_Type.SPAWN_VEHICLE):
@@ -102,7 +93,7 @@ class Environment:
         self.vehicle_matrix["Trucks"][origin][origin] += 1
         print(f"Vehicle spawned")
 
-    def dispatch_vehicle(self, event):
+    def dispatch_vehicle(self, event: Event):
         request_id = event.request_id
         request : Request = self.requests[request_id]
         origin = request.origin
@@ -112,7 +103,7 @@ class Environment:
         self.vehicle_matrix["Trucks"][origin][destination] += 1
         print(f"Vehicle dispatched")
 
-    def deliver(self, event):
+    def deliver(self, event: Event):
         request_id = event.request_id
         request : Request = self.requests[request_id]
         origin = request.origin
@@ -126,39 +117,41 @@ class Environment:
 
 def generate_and_assign_agents(num_shippers, num_lsps, num_carriers):
     
-    carriers = []
-    lsps = []
-    shippers = []
+    carriers = np.empty(num_carriers, dtype=Carrier)
+    lsps = np.empty(num_lsps, dtype=LSP)
+    shippers = np.empty(num_shippers, dtype=Shipper)
     agents = {}
 
     for i in range(num_carriers):
-        carriers.append(Carrier(i))
+        carriers[i] = Carrier(i)
     agents[Agent_Type.CARRIER] = carriers
 
     for i in range(num_lsps):
-        lsps.append(LSP(i))
+        lsps[i] = LSP(i)
     agents[Agent_Type.LSP] = lsps
     
     for i in range(num_shippers):
-        shippers.append(Shipper(i))
+        shippers[i] = Shipper(i)
     agents[Agent_Type.SHIPPER] = shippers
 
     print("Agents generated successfully")
 
+    # Hardcoded assignments
     agents[Agent_Type.SHIPPER][0].lsp_list = [agents[Agent_Type.LSP][0], agents[Agent_Type.LSP][1]]
     agents[Agent_Type.LSP][0].carriers = [agents[Agent_Type.CARRIER][0], agents[Agent_Type.CARRIER][1]]
     agents[Agent_Type.LSP][1].carriers = [agents[Agent_Type.CARRIER][2], agents[Agent_Type.CARRIER][3]]
-    print(f'AAAAAAAAAAA: {type(agents[Agent_Type.SHIPPER][0].lsp_list[0])}')
 
     print("Agents assigned successfully")
 
     return agents
 
 
-def create_requests_and_events(requests_df, dist_matrix):
+def create_requests_and_events(requests_df : pd.DataFrame, dist_matrix):
     print(requests_df)
-    requests = []
+    request_size = len(requests_df)
+    requests = np.empty(request_size, dtype=Request)
     events = EventQueue()
+
 
     for i in range(len(requests_df)):
         
@@ -178,7 +171,7 @@ def create_requests_and_events(requests_df, dist_matrix):
                 price=price, time_window=time_window, 
                 selected_shipper=selected_shipper, distance=distance)
         
-        requests.append(new_request)
+        requests[i] = new_request
 
         spawn_vehicle_event = Event(time_window[0] - 1, Event_Type.SPAWN_VEHICLE, request_id)
         dispatch_vehicle_event = Event(time_window[0], Event_Type.DISPATCH_VEHICLE, request_id)
@@ -202,7 +195,4 @@ def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_ma
 
     return Environment(requests=requests, agents=agents, 
                        vehicle_matrix=vehicle_matrix, events=events, step_size=step_size)
-
-def get_snapshot(env: Environment):
-    return env.step()
 

@@ -135,7 +135,7 @@ def read_data_network():
     return nodes_df, connectivity_df
 
 def read_data_environment():
-    requests_df = pd.read_csv('Server/instance_files/param_demand_5.csv')
+    requests_df = pd.read_csv('Server/instance_files/param_demand_100.csv')
     nodes_df = pd.read_csv('Server/instance_files/param_nodes.csv')
 
     with open('Server/instance_files/param_dist.csv') as f:
@@ -151,12 +151,10 @@ if __name__ == "__main__":
     
     nodes_df_network, connectivity_df = read_data_network()
     requests_df, nodes_df_env, dist_matrix = read_data_environment()
-    step_size = 5
+    step_size = 2
 
     network = build_network(nodes_df_network, connectivity_df)
     environment = build_environment(requests_df, nodes_df_env, dist_matrix, step_size)
-
-    # environment.events.print_all_events()
 
     def randomize_snapshot():
         """
