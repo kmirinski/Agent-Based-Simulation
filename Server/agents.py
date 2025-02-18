@@ -1,5 +1,6 @@
 import random
 import math
+import numpy as np
 from typing import List, Tuple
 
 from common import Vehicle, Request
@@ -7,7 +8,7 @@ from common import Vehicle, Request
 class Carrier:
     def __init__(self, id):
         self.id = id
-        self.vehicles: List[Vehicle] = []
+        self.vehicles: List[Vehicle] = np.empty(0, dtype=Vehicle)
         self.price_per_hour = 10
 
     def quota(self, request: Request) -> Tuple[float, float]:
@@ -20,7 +21,7 @@ class Carrier:
 class LSP:
     def __init__(self, id):
         self.id = id
-        self.carriers: List[Carrier] = []
+        self.carriers: List[Carrier] = np.empty(0, dtype=Carrier)
 
     def contact_carriers(self, request: Request) -> Tuple[int, float, float]:
         best_carrier = None
@@ -38,7 +39,8 @@ class LSP:
 class Shipper:
     def __init__(self, id):
         self.id = id
-        self.lsp_list: List[LSP] = []
+        self.lsp_list: List[LSP] = np.empty(0, dtype=LSP)
+        self.requests: List[Request] = np.empty(0, dtype=Request)
 
     def contact_lsps(self, request: Request) -> Tuple[int, float, float]:
         best_offer = None

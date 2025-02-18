@@ -63,6 +63,7 @@ class Environment:
                     break
         else:
             print("No events in the queue. Simulation ended.")
+        # print(self.vehicle_matrix["Trucks"])
         return self.vehicle_matrix
     
     def process_event(self, event: Event):
@@ -158,8 +159,8 @@ def create_requests_and_events(requests_df : pd.DataFrame, dist_matrix):
         request_id = int(requests_df.iloc[i]['id'])
         origin = int(requests_df.iloc[i]['orig'])
         destination = int(requests_df.iloc[i]['dest'])
-        amount = int(requests_df.iloc[i]['amount'])
-        price = int(requests_df.iloc[i]['price'])
+        volume = int(requests_df.iloc[i]['amount'])
+        # price = int(requests_df.iloc[i]['price'])
         time_window: Tuple[int, int] = (int(requests_df.iloc[i]['lw']), int(requests_df.iloc[i]['uw']))
         selected_shipper = int(requests_df.iloc[i]['selected']) - 1
 
@@ -167,8 +168,7 @@ def create_requests_and_events(requests_df : pd.DataFrame, dist_matrix):
         
         new_request = Request(
                 id=request_id, origin=origin, 
-                destination=destination, amount=amount, 
-                price=price, time_window=time_window, 
+                destination=destination, volume=volume, time_window=time_window, 
                 selected_shipper=selected_shipper, distance=distance)
         
         requests[i] = new_request

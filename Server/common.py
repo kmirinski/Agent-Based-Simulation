@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Tuple
 
@@ -51,13 +51,16 @@ class Agent_Type(Enum):
 @dataclass
 class Request:
     id: int
-    origin: int                     # Node ID
-    destination: int                # Node ID
-    amount: int
-    price: int
-    time_window: Tuple[int, int]    # Lower and upper bounds
-    selected_shipper: int
-    distance: int
+    origin: int                                         # Node ID
+    destination: int                                    # Node ID
+    volume: float                                       # in m^3
+    time_window: Tuple[int, int]                        # Lower and upper bounds
+    selected_shipper: int                               # Shipper ID
+    distance: int                                       # in km
+    weight: float = field(default = 0.0)                # in kg
+    penalization_factor: float = field(default= 0.0)    # if the request is not fulfilled within the time window
+    full_truckload: bool = field(default = True)        # whether the request can be on the truck with other requests
+    is_splittable: bool = field(default = False)        # whether the request can be split into multiple trucks
 
 @dataclass
 class Event:

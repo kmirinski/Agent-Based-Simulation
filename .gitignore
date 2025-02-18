@@ -6,3 +6,6 @@ __pycache__/
 
 # Local route geojsons
 Server/instance_files/routes/*.geojson
+
+# Notes
+Notes.txt
