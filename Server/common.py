@@ -1,12 +1,25 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Tuple
+from typing import Tuple, TypeAlias
+
+AccessType: TypeAlias = Tuple[bool, bool, bool]
+
 
 @dataclass
 class Node:
+    """
+    A terminal is defined by its name, longitude, latitude, and accessibility.
+    The accessibility is a tuple of three booleans, indicating if the terminal is accessible by truck, train, or ship.
+    The first element of the tuple corresponds to truck accessibility, the second to train accessibility, 
+    and the third to ship accessibility.
+    
+    Example 1: (True, False, True) indicates that the terminal is accessible by truck and ship, but not by train.
+    Example 2: (True, True, True) indicates that the terminal is accessible by all the types of vehicles.
+    """
     name: str
     longitude: float
     latitude: float
+    accessibility: AccessType = (True, True, True) # Indicates if the terminal is accessible by truck, train, or ship
 
 @dataclass
 class Link:
@@ -18,7 +31,8 @@ class Link:
 @dataclass
 class Vehicle:
     """
-    A type of vehicle is defined by it's type name (e.g. empty trucks and containers), origin node (ID), destination node (ID), and quantity
+    A type of vehicle is defined by it's type name (e.g. empty trucks and containers), 
+    origin node (ID), destination node (ID), and quantity.
     """
     name: str
     origin: int
@@ -31,7 +45,8 @@ class Vehicle:
 @dataclass
 class NetworkVehicle:
     """
-    A type of vehicle is defined by it's type name (e.g. empty trucks and containers), origin node (ID), destination node (ID), and quantity
+    A type of vehicle is defined by it's type name (e.g. empty trucks and containers), 
+    origin node (ID), destination node (ID), and quantity.
     """
     name: str
     origin: int

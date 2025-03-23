@@ -1,7 +1,6 @@
 import random
 import numpy as np
 from typing import Dict
-from abc import ABC, abstractmethod
 
 TRUCK_EMISSION_FACTOR = 0.05
 TRUCK_UNIT_COST = 100
