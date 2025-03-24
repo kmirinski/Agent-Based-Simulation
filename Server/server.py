@@ -6,6 +6,7 @@ import random
 from typing import Dict
 from network import build_network, Vehicle
 from environment import build_environment
+from data_logger import *
 import pandas as pd
 import numpy as np
 
@@ -148,6 +149,11 @@ def read_data_environment():
 
 
 if __name__ == "__main__":
+
+    # init()
+    # run_simulation()
+    # save_results()
+    # send_results()
     
     nodes_df_network, connectivity_df = read_data_network()
     requests_df, nodes_df_env, dist_matrix = read_data_environment()
@@ -155,6 +161,8 @@ if __name__ == "__main__":
 
     network = build_network(nodes_df_network, connectivity_df)
     environment = build_environment(requests_df, nodes_df_env, dist_matrix, step_size)
+
+    create_folder_and_file(FOLDER_NAME, EVENT_FILE, EVENTS_FILE_PATH)
 
     def randomize_snapshot():
         """
@@ -176,7 +184,17 @@ if __name__ == "__main__":
     
     def get_snapshot():
         vehicle_matrix = environment.step()
-        network.update_vehicles(vehicle_matrix)
+        if vehicle_matrix is not None:
+            network.update_vehicles(vehicle_matrix)
+            return True
+        else:
+            return False
     
 
-    asyncio.run(main())
+    # asyncio.run(main())
+    while get_snapshot():
+        pass
+    
+    print("Simulation completed")
+    environment.event_logger.log_events()
+    

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Tuple, List, Dict
 
 from agents import Shipper, LSP, Carrier
+from data_logger import EventLogger 
 
 from common import Vehicle, Request, Event, Event_Type, Agent_Type
 
@@ -42,8 +43,9 @@ class Environment:
     time: int = 0
     requests: List[Request] = None
     agents: Dict[Agent_Type, List] = None
-    vehicle_matrix: Dict[str, np.ndarray] = None
+    vehicle_matrices: Dict[str, np.ndarray] = None
     events: EventQueue = None
+    event_logger: EventLogger = EventLogger()
     step_size: int = 0
 
     def step(self):
@@ -53,8 +55,8 @@ class Environment:
             print(f"Time: {self.time}")
             while(True):
                 if (self.events.empty()):
-                    print("No events in the queue. Simulation ended.")
-                    break
+                    print("No more events to process")
+                    return None
                 top_event : Event = self.events.peek()
                 if(self.time >= top_event.timestamp):
                     event = self.events.get()
@@ -62,9 +64,10 @@ class Environment:
                 else:
                     break
         else:
-            print("No events in the queue. Simulation ended.")
+            print("No more events to process")
+            return None
         # print(self.vehicle_matrix["Trucks"])
-        return self.vehicle_matrix
+        return self.vehicle_matrices
     
     def process_event(self, event: Event):
         if(event.type == Event_Type.SPAWN_VEHICLE):
@@ -91,8 +94,9 @@ class Environment:
         delivery_event = Event(self.time + delivery_time + 1, Event_Type.DELIVER, request_id)
         self.events.put(delivery_event)
  
-        self.vehicle_matrix["Trucks"][origin][origin] += 1
-        print(f"Vehicle spawned")
+        self.vehicle_matrices["Trucks"][origin][origin] += 1
+        self.event_logger.save_event(event)
+        # print(f"Vehicle spawned")
 
     def dispatch_vehicle(self, event: Event):
         request_id = event.request_id
@@ -100,9 +104,10 @@ class Environment:
         origin = request.origin
         destination = request.destination
 
-        self.vehicle_matrix["Trucks"][origin][origin] -= 1
-        self.vehicle_matrix["Trucks"][origin][destination] += 1
-        print(f"Vehicle dispatched")
+        self.vehicle_matrices["Trucks"][origin][origin] -= 1
+        self.vehicle_matrices["Trucks"][origin][destination] += 1
+        self.event_logger.save_event(event)
+        # print(f"Vehicle dispatched")
 
     def deliver(self, event: Event):
         request_id = event.request_id
@@ -110,9 +115,10 @@ class Environment:
         origin = request.origin
         destination = request.destination
 
-        self.vehicle_matrix["Trucks"][origin][destination] -= 1
-        self.vehicle_matrix["Trucks"][destination][destination] += 1
-        print(f"Vehicle delivered")
+        self.vehicle_matrices["Trucks"][origin][destination] -= 1
+        self.vehicle_matrices["Trucks"][destination][destination] += 1
+        self.event_logger.save_event(event)
+        # print(f"Vehicle delivered")
 
 
 
@@ -194,5 +200,5 @@ def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_ma
     print("Environment built successfully")
 
     return Environment(requests=requests, agents=agents, 
-                       vehicle_matrix=vehicle_matrix, events=events, step_size=step_size)
+                       vehicle_matrices=vehicle_matrix, events=events, step_size=step_size)
 

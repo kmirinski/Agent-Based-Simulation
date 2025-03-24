@@ -19,7 +19,7 @@ class Node:
     name: str
     longitude: float
     latitude: float
-    accessibility: AccessType = (True, True, True) # Indicates if the terminal is accessible by truck, train, or ship
+    accessibility: AccessType = (True, True, True) 
 
 @dataclass
 class Link:
@@ -85,3 +85,15 @@ class Event:
     
     def __lt__(self, other: 'Event'):
         return self.timestamp < other.timestamp
+    
+    def to_dict(self):
+        return {
+            "timestamp": self.timestamp,
+            "type": self.type.name
+        }
+
+@dataclass
+class Service:
+    origin: int
+    destination: int
+    request_id: int
