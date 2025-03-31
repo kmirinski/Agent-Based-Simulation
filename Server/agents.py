@@ -51,7 +51,6 @@ class Shipper:
             if best_price is None or price < best_price:
                 best_price = price
                 best_offer = (carrier_id, lsp_id, price, time)
-        print(f"Best offer: {best_offer}")
         return best_offer[3] 
 
     def contact_carrier(self, request: Request):

@@ -1,16 +1,42 @@
+import queue
+import time
+
+from dataclasses import dataclass
 import random
 import numpy as np
-from typing import Dict
+from typing import List, Tuple
 
-TRUCK_EMISSION_FACTOR = 0.05
-TRUCK_UNIT_COST = 100
+CONTAINER_CAPACITY = 24
 
+# request id is going to be -1 if the service is not associated with a request
+# a truck would contain a list of services assigned by the research algorithms
+class TruckService:
+    def __init__(self, priority, origin, destination, request_id):
+        self.priority = priority
+        self.origin = origin
+        self.destination = destination
+        self.request_id = request_id
+    
+    def __lt__(self, other: 'TruckService'):
+        return self.priority < other.priority
+    
+class TruckServiceQueue(queue.PriorityQueue):
+    def peek(self):
+        if self.empty():
+            return None
+        return self.queue[0]
+    
+    def print_all_events(self):
+        print("Services in the queue:")
+        for service in self.queue:
+            print(service)
+
+@dataclass
 class Container:
-    def __init__(self, container_id, consolided=False, capacity=24):
-        self.container_id = container_id
-        self.contents: Dict[int, int] = {}          # key: request_id, value: quantity
-        self.consolidated = consolided              # This flag will be used by the algorithms
-        self.capacity = capacity
+    container_id: int
+    contents: Tuple[int, int]
+    consolidated: bool
+    capacity = CONTAINER_CAPACITY
 
     # The research algorithms will be assumed to always produce feasible results
     def load_container(self, request: int, quantity: int):
@@ -20,13 +46,18 @@ class Container:
             self.contents[request] = quantity
         return True
 
-
+@dataclass
 class Vehicle:
-    def __init__(self, max_containers, unit_cost, emission_factor):
-        self.number_of_containers = 0
-        self.containers = np.empty(max_containers, dtype=Container)
-        self.unit_cost = unit_cost
-        self.emission_factor = emission_factor
+    vehicle_id: int
+    name: str
+    number_of_containers: int = 0
+    max_containers: int 
+    containers: List[Container] = None
+    unit_cost: float
+    emission_factor: float 
+
+    def __post_init__(self):
+        self.contaiers = np.empty(self.max_containers, dtype=Container)
 
     def load_vehicle(self, container: Container):
         if self.number_of_containers < len(self.containers):
@@ -42,45 +73,18 @@ class Vehicle:
                 self.number_of_containers -= 1
                 return True
         return False
-        
 
-    def is_full(self):
-        return self.number_of_containers == len(self.containers)
-
-    def is_empty(self):
-        return self.number_of_containers == 0
-    
+@dataclass
 class Truck(Vehicle):
-    def __init__(
-            self, 
-            depot: int,                             # ID of the depot - can be fetched from the network 
-            long_haul: bool = True,                 # True if the truck is long haul, False if it is local -> has to return to depot if local
-            max_containers=1,                       # The truck can carry at most one container
-            unit_cost=TRUCK_UNIT_COST,              # Cost per unit 
-            emission_factor=TRUCK_EMISSION_FACTOR   # Emission factor 
-        ):
+    services: TruckServiceQueue = TruckServiceQueue()
+    depot: int = -1                             
+    long_haul: bool = True
+    speed_per_timestep: int = random.randint(40, 60) # km/h
 
-        super().__init__(max_containers, unit_cost, emission_factor)
-        self.depot = depot
-        self.long_haul = long_haul
-        self.speed = random.randint(40, 60)
-
-class Barge(Vehicle):
-    def __init__(
-            self,  
-            max_containers=1,                       # The truck can carry at most one container
-            unit_cost=TRUCK_UNIT_COST,              # Cost per unit 
-            emission_factor=TRUCK_EMISSION_FACTOR   # Emission factor 
-        ):
-
-        super().__init__(max_containers, unit_cost, emission_factor)
-
+@dataclass
 class Train(Vehicle):
-    def __init__(
-            self, 
-            max_containers=1,                       # The truck can carry at most one container
-            unit_cost=TRUCK_UNIT_COST,              # Cost per unit 
-            emission_factor=TRUCK_EMISSION_FACTOR   # Emission factor 
-        ):
-
-        super().__init__(max_containers, unit_cost, emission_factor)
+    pass
+    
+@dataclass
+class Barge(Vehicle):
+    pass

@@ -9,11 +9,11 @@ AccessType: TypeAlias = Tuple[bool, bool, bool]
 class Node:
     """
     A terminal is defined by its name, longitude, latitude, and accessibility.
-    The accessibility is a tuple of three booleans, indicating if the terminal is accessible by truck, train, or ship.
+    The accessibility is a tuple of three booleans, indicating if the terminal is accessible by truck, train, or barge.
     The first element of the tuple corresponds to truck accessibility, the second to train accessibility, 
-    and the third to ship accessibility.
+    and the third to barge accessibility.
     
-    Example 1: (True, False, True) indicates that the terminal is accessible by truck and ship, but not by train.
+    Example 1: (True, False, True) indicates that the terminal is accessible by truck and barge, but not by train.
     Example 2: (True, True, True) indicates that the terminal is accessible by all the types of vehicles.
     """
     name: str
@@ -54,7 +54,7 @@ class NetworkVehicle:
     quantity: int
 
 class Event_Type(Enum):
-    SPAWN_VEHICLE = 0
+    ARRIVED_REQUEST = 0
     DISPATCH_VEHICLE = 1
     DELIVER = 2
 
@@ -77,6 +77,7 @@ class Request:
     full_truckload: bool = field(default = True)        # whether the request can be on the truck with other requests
     is_splittable: bool = field(default = False)        # whether the request can be split into multiple trucks
 
+
 @dataclass
 class Event:
     timestamp: int
@@ -92,8 +93,3 @@ class Event:
             "type": self.type.name
         }
 
-@dataclass
-class Service:
-    origin: int
-    destination: int
-    request_id: int

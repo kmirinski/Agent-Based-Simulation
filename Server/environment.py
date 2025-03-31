@@ -9,7 +9,8 @@ from typing import Tuple, List, Dict
 from agents import Shipper, LSP, Carrier
 from data_logger import EventLogger 
 
-from common import Vehicle, Request, Event, Event_Type, Agent_Type
+from common import Request, Event, Event_Type, Agent_Type
+# from vehicles import Barge, Train, Truck, Container, Vehicle
 
 num_shippers = 1
 num_lsps = 2
@@ -66,21 +67,18 @@ class Environment:
         else:
             print("No more events to process")
             return None
-        # print(self.vehicle_matrix["Trucks"])
+        print(self.vehicle_matrices["Trucks"])
         return self.vehicle_matrices
     
     def process_event(self, event: Event):
-        if(event.type == Event_Type.SPAWN_VEHICLE):
+        if(event.type == Event_Type.ARRIVED_REQUEST):
             self.spawn_vehicle(event)
-            print("Spawn vehicle event")
         elif(event.type == Event_Type.DISPATCH_VEHICLE):
             self.dispatch_vehicle(event)
-            print("Dispatch vehicle event")
         elif(event.type == Event_Type.DELIVER):
             self.deliver(event)
-            print("Deliver vehicle event")
-        else:
-            print("Unknown event type")
+
+        self.event_logger.save_event(event)
 
     def spawn_vehicle(self, event: Event):
         request_id = event.request_id
@@ -100,25 +98,38 @@ class Environment:
 
     def dispatch_vehicle(self, event: Event):
         request_id = event.request_id
-        request : Request = self.requests[request_id]
+        request: Request = self.requests[request_id]
         origin = request.origin
         destination = request.destination
 
         self.vehicle_matrices["Trucks"][origin][origin] -= 1
         self.vehicle_matrices["Trucks"][origin][destination] += 1
-        self.event_logger.save_event(event)
-        # print(f"Vehicle dispatched")
+        
 
     def deliver(self, event: Event):
         request_id = event.request_id
-        request : Request = self.requests[request_id]
+        request: Request = self.requests[request_id]
         origin = request.origin
         destination = request.destination
 
         self.vehicle_matrices["Trucks"][origin][destination] -= 1
         self.vehicle_matrices["Trucks"][destination][destination] += 1
-        self.event_logger.save_event(event)
-        # print(f"Vehicle delivered")
+
+    # def generate_containers(self, request: Request):
+    #     # TODO: REMOVE THIS HARDCODED VARIABLE
+    #     capacity = 24
+    #     load = request.volume
+    #     origin = request.origin
+    #     full_containers = load // capacity
+    #     remainder = load % capacity
+
+    #     for i in range(full_containers):
+    #         container = Container([request.id, capacity])
+    #         self.vehicle_matrices["Containers"][origin][origin].append(container)                 
+        
+    #     if remainder > 0:
+    #         container = Container([request.id, remainder])
+    #         self.vehicle_matrices["Containers"][origin][origin].append(container)
 
 
 
@@ -179,7 +190,7 @@ def create_requests_and_events(requests_df : pd.DataFrame, dist_matrix):
         
         requests[i] = new_request
 
-        spawn_vehicle_event = Event(time_window[0] - 1, Event_Type.SPAWN_VEHICLE, request_id)
+        spawn_vehicle_event = Event(time_window[0] - 1, Event_Type.ARRIVED_REQUEST, request_id)
         dispatch_vehicle_event = Event(time_window[0], Event_Type.DISPATCH_VEHICLE, request_id)
         events.put(spawn_vehicle_event)
         events.put(dispatch_vehicle_event)
@@ -188,17 +199,21 @@ def create_requests_and_events(requests_df : pd.DataFrame, dist_matrix):
     return requests, events
 
 def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_matrix: np.ndarray, step_size: int):
-    
-    agents = generate_and_assign_agents(num_shippers, num_lsps, num_carriers)
-    requests, events = create_requests_and_events(requests_df, dist_matrix)
+
     number_of_nodes = len(nodes_df)
 
-    vehicle_matrix = {
+    vehicle_matrices = {
         "Trucks": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
+        "Trains": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
+        "Barges": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
+        "Containers": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
     }
+
+    agents = generate_and_assign_agents(num_shippers, num_lsps, num_carriers)
+    requests, events = create_requests_and_events(requests_df, dist_matrix)
 
     print("Environment built successfully")
 
     return Environment(requests=requests, agents=agents, 
-                       vehicle_matrices=vehicle_matrix, events=events, step_size=step_size)
+                       vehicle_matrices=vehicle_matrices, events=events, step_size=step_size)
 
