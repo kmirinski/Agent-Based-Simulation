@@ -136,6 +136,9 @@ def read_data_network():
 def read_data_environment():
     requests_df = pd.read_csv('Server/instance_files/param_demand_5.csv')
     nodes_df = pd.read_csv('Server/instance_files/param_nodes.csv')
+    vehicles_df = pd.read_csv('Server/instance_files/param_vehicles.csv')
+
+    print(vehicles_df)
 
     with open('Server/instance_files/param_dist.csv') as f:
         f.readline().strip().split(',')
@@ -143,7 +146,7 @@ def read_data_environment():
 
     print("Data read successfully")
 
-    return requests_df, nodes_df, dist_matrix
+    return requests_df, nodes_df, dist_matrix, vehicles_df
 
 def randomize_snapshot():
     """
@@ -178,11 +181,11 @@ def initialize():
     Initialize the simulation by reading the data and creating the network and environment objects.
     """
     nodes_df_network, connectivity_df = read_data_network()
-    requests_df, nodes_df_env, dist_matrix = read_data_environment()
+    requests_df, nodes_df_env, dist_matrix, vehicles_df = read_data_environment()
     step_size = 1
 
     network = build_network(nodes_df_network, connectivity_df)
-    environment = build_environment(requests_df, nodes_df_env, dist_matrix, step_size)
+    environment = build_environment(requests_df, nodes_df_env, dist_matrix, vehicles_df, step_size)
 
     create_folder_and_file(FOLDER_NAME, EVENT_FILE, EVENTS_FILE_PATH)
 

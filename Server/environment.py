@@ -10,11 +10,16 @@ from agents import Shipper, LSP, Carrier
 from data_logger import EventLogger 
 
 from common import Request, Event, Event_Type, Agent_Type
-# from vehicles import Barge, Train, Truck, Container, Vehicle
+from vehicles import Truck, Train, Barge, Vehicle
+
+# ---------------------------------------------------------
+
 
 num_shippers = 1
 num_lsps = 2
 num_carriers = 4
+
+# ---------------------------------------------------------
 
 class EventQueue(queue.PriorityQueue):
     def peek(self):
@@ -26,6 +31,8 @@ class EventQueue(queue.PriorityQueue):
         print("Events in the queue:")
         for event in self.queue:
             print(event)
+
+# ---------------------------------------------------------
 
 @dataclass
 class Environment:
@@ -44,6 +51,7 @@ class Environment:
     time: int = 0
     requests: List[Request] = None
     agents: Dict[Agent_Type, List] = None
+    vehicles: List[Vehicle] = None
     vehicle_matrices: Dict[str, np.ndarray] = None
     events: EventQueue = None
     event_logger: EventLogger = EventLogger()
@@ -67,7 +75,7 @@ class Environment:
         else:
             print("No more events to process")
             return None
-        print(self.vehicle_matrices["Trucks"])
+        print(self.vehicle_matrices["Truck"])
         return self.vehicle_matrices
     
     def process_event(self, event: Event):
@@ -115,23 +123,8 @@ class Environment:
         self.vehicle_matrices["Trucks"][origin][destination] -= 1
         self.vehicle_matrices["Trucks"][destination][destination] += 1
 
-    # def generate_containers(self, request: Request):
-    #     # TODO: REMOVE THIS HARDCODED VARIABLE
-    #     capacity = 24
-    #     load = request.volume
-    #     origin = request.origin
-    #     full_containers = load // capacity
-    #     remainder = load % capacity
 
-    #     for i in range(full_containers):
-    #         container = Container([request.id, capacity])
-    #         self.vehicle_matrices["Containers"][origin][origin].append(container)                 
-        
-    #     if remainder > 0:
-    #         container = Container([request.id, remainder])
-    #         self.vehicle_matrices["Containers"][origin][origin].append(container)
-
-
+# ---------------------------------------------------------
 
 def generate_and_assign_agents(num_shippers, num_lsps, num_carriers):
     
@@ -163,8 +156,7 @@ def generate_and_assign_agents(num_shippers, num_lsps, num_carriers):
 
     return agents
 
-
-def create_requests_and_events(requests_df : pd.DataFrame, dist_matrix):
+def generate_requests_and_events(requests_df : pd.DataFrame, dist_matrix):
     print(requests_df)
     request_size = len(requests_df)
     requests = np.empty(request_size, dtype=Request)
@@ -198,22 +190,51 @@ def create_requests_and_events(requests_df : pd.DataFrame, dist_matrix):
     print("Requests and events created successfully")
     return requests, events
 
-def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_matrix: np.ndarray, step_size: int):
+def generate_vehicles(vehicles_df: pd.DataFrame, vehicle_matrices: Dict[str, np.ndarray]):
+    vehicles_size = len(vehicles_df)
+    vehicles = np.empty(vehicles_size, dtype=Vehicle)
+
+    for i in range(vehicles_size):
+
+        vehicle_id = int(vehicles_df.iloc[i]['id'])
+        name = vehicles_df.iloc[i]['name']
+        initial_location = (int(vehicles_df.iloc[i]['initial_location']), int(vehicles_df.iloc[i]['initial_location']))
+        max_containers = int(vehicles_df.iloc[i]['max_containers'])
+        unit_cost = float(vehicles_df.iloc[i]['unit_cost'])
+        emission_factor = float(vehicles_df.iloc[i]['emission_factor'])
+
+        if name == "Truck":
+            vehicle = Truck(vehicle_id, name, current_location=initial_location, max_containers=max_containers, unit_cost=unit_cost, emission_factor=emission_factor)
+        if name == "Train":
+            vehicle = Train(vehicle_id, name, current_location=initial_location, max_containers=max_containers, unit_cost=unit_cost, emission_factor=emission_factor)
+        if name == "Barge":
+            vehicle = Barge(vehicle_id, name, current_location=initial_location, max_containers=max_containers, unit_cost=unit_cost, emission_factor=emission_factor)
+        
+        vehicles[i] = vehicle
+        vehicle_matrices[name][initial_location[0]][initial_location[1]] += 1
+        
+    print("Vehicles generated successfully")
+    return vehicles
+# ---------------------------------------------------------
+
+
+def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_matrix: np.ndarray, vehicles_df: pd.DataFrame, step_size: int):
 
     number_of_nodes = len(nodes_df)
 
     vehicle_matrices = {
-        "Trucks": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
-        "Trains": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
-        "Barges": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
-        "Containers": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
+        "Truck": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
+        "Train": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
+        "Barge": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
+        "Container": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
     }
 
     agents = generate_and_assign_agents(num_shippers, num_lsps, num_carriers)
-    requests, events = create_requests_and_events(requests_df, dist_matrix)
+    requests, events = generate_requests_and_events(requests_df, dist_matrix)
+    vehicles = generate_vehicles(vehicles_df, vehicle_matrices)
 
     print("Environment built successfully")
 
-    return Environment(requests=requests, agents=agents, 
+    return Environment(requests=requests, agents=agents, vehicles=vehicles,
                        vehicle_matrices=vehicle_matrices, events=events, step_size=step_size)
 

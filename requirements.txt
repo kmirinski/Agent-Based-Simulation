@@ -1,0 +1,4 @@
+geojson==3.2.0
+numpy==2.2.4
+pandas==2.2.3
+tornado==6.4.2

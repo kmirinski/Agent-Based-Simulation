@@ -50,11 +50,13 @@ class Container:
 class Vehicle:
     vehicle_id: int
     name: str
-    number_of_containers: int = 0
+    current_location: Tuple[int, int]
     max_containers: int 
-    containers: List[Container] = None
     unit_cost: float
     emission_factor: float 
+    number_of_containers: int = 0
+    containers: List[Container] = None
+    
 
     def __post_init__(self):
         self.contaiers = np.empty(self.max_containers, dtype=Container)
