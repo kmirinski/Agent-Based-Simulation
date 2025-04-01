@@ -54,6 +54,7 @@ class Vehicle:
     max_containers: int 
     unit_cost: float
     emission_factor: float 
+    carrier_id: int
     number_of_containers: int = 0
     containers: List[Container] = None
     

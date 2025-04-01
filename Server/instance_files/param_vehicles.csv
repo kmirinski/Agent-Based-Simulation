@@ -1,6 +1,6 @@
-id,name,initial_location,max_containers,unit_cost,emission_factor
-0,Truck,6,5,1,1
-0,Truck,1,5,1,1
-0,Truck,4,5,1,1
-0,Truck,2,5,1,1
-0,Truck,1,5,1,1
+id,name,initial_location,max_containers,unit_cost,emission_factor,carrier_id
+0,Truck,6,5,1,1,0
+1,Truck,1,5,1,1,1
+2,Truck,4,5,1,1,2 
+3,Truck,2,5,1,1,3
+4,Truck,1,5,1,1,0

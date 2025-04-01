@@ -75,7 +75,8 @@ class Environment:
         else:
             print("No more events to process")
             return None
-        print(self.vehicle_matrices["Truck"])
+        print(self.agents[Agent_Type.CARRIER][0].fleet)
+        # print(self.vehicle_matrices["Truck"])
         return self.vehicle_matrices
     
     def process_event(self, event: Event):
@@ -123,10 +124,9 @@ class Environment:
         self.vehicle_matrices["Trucks"][origin][destination] -= 1
         self.vehicle_matrices["Trucks"][destination][destination] += 1
 
-
 # ---------------------------------------------------------
 
-def generate_and_assign_agents(num_shippers, num_lsps, num_carriers):
+def generate_and_assign_agents(num_shippers: int, num_lsps: int, num_carriers: int, vehicles: List[Vehicle]):
     
     carriers = np.empty(num_carriers, dtype=Carrier)
     lsps = np.empty(num_lsps, dtype=LSP)
@@ -151,6 +151,10 @@ def generate_and_assign_agents(num_shippers, num_lsps, num_carriers):
     agents[Agent_Type.SHIPPER][0].lsp_list = [agents[Agent_Type.LSP][0], agents[Agent_Type.LSP][1]]
     agents[Agent_Type.LSP][0].carriers = [agents[Agent_Type.CARRIER][0], agents[Agent_Type.CARRIER][1]]
     agents[Agent_Type.LSP][1].carriers = [agents[Agent_Type.CARRIER][2], agents[Agent_Type.CARRIER][3]]
+
+    for vehicle in vehicles:
+        vehicle_carrier_id = vehicle.carrier_id
+        agents[Agent_Type.CARRIER][vehicle_carrier_id].fleet.append(vehicle.vehicle_id)
 
     print("Agents assigned successfully")
 
@@ -202,13 +206,17 @@ def generate_vehicles(vehicles_df: pd.DataFrame, vehicle_matrices: Dict[str, np.
         max_containers = int(vehicles_df.iloc[i]['max_containers'])
         unit_cost = float(vehicles_df.iloc[i]['unit_cost'])
         emission_factor = float(vehicles_df.iloc[i]['emission_factor'])
+        carrier_id = int(vehicles_df.iloc[i]['carrier_id'])
 
         if name == "Truck":
-            vehicle = Truck(vehicle_id, name, current_location=initial_location, max_containers=max_containers, unit_cost=unit_cost, emission_factor=emission_factor)
+            vehicle = Truck(vehicle_id, name, current_location=initial_location, max_containers=max_containers, 
+                            unit_cost=unit_cost, emission_factor=emission_factor, carrier_id=carrier_id)
         if name == "Train":
-            vehicle = Train(vehicle_id, name, current_location=initial_location, max_containers=max_containers, unit_cost=unit_cost, emission_factor=emission_factor)
+            vehicle = Train(vehicle_id, name, current_location=initial_location, max_containers=max_containers, 
+                            unit_cost=unit_cost, emission_factor=emission_factor, carrier_id=carrier_id)
         if name == "Barge":
-            vehicle = Barge(vehicle_id, name, current_location=initial_location, max_containers=max_containers, unit_cost=unit_cost, emission_factor=emission_factor)
+            vehicle = Barge(vehicle_id, name, current_location=initial_location, max_containers=max_containers, 
+                            unit_cost=unit_cost, emission_factor=emission_factor, carrier_id=carrier_id)
         
         vehicles[i] = vehicle
         vehicle_matrices[name][initial_location[0]][initial_location[1]] += 1
@@ -229,9 +237,9 @@ def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_ma
         "Container": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
     }
 
-    agents = generate_and_assign_agents(num_shippers, num_lsps, num_carriers)
-    requests, events = generate_requests_and_events(requests_df, dist_matrix)
     vehicles = generate_vehicles(vehicles_df, vehicle_matrices)
+    agents = generate_and_assign_agents(num_shippers, num_lsps, num_carriers, vehicles)
+    requests, events = generate_requests_and_events(requests_df, dist_matrix)
 
     print("Environment built successfully")
 

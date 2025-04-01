@@ -3,12 +3,16 @@ import math
 import numpy as np
 from typing import List, Tuple
 
-from common import Vehicle, Request
+from common import Request
 
 class Carrier:
+    """
+    A carrier is an agent that has a fleet of vehicles and can provide transportation services.
+    The fleet stores the ids of the vehicles in the fleet.
+    """
     def __init__(self, id):
         self.id = id
-        self.vehicles: List[Vehicle] = np.empty(0, dtype=Vehicle)
+        self.fleet: List[int] = []
         self.price_per_hour = 10
 
     def quota(self, request: Request) -> Tuple[float, float]:
@@ -19,6 +23,9 @@ class Carrier:
         return price, time 
     
 class LSP:
+    """"
+    A logistics service provider (LSP) is an agent that can contact carriers to provide transportation services."
+    """
     def __init__(self, id):
         self.id = id
         self.carriers: List[Carrier] = np.empty(0, dtype=Carrier)
@@ -37,6 +44,9 @@ class LSP:
         return best_carrier.id, self.id, price, time
     
 class Shipper:
+    """"
+    A shipper is an agent that can send requests to LSPs to provide transportation services."
+    """
     def __init__(self, id):
         self.id = id
         self.lsp_list: List[LSP] = np.empty(0, dtype=LSP)
