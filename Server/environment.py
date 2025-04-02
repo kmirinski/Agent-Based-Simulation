@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Tuple, List, Dict
 
 from agents import Shipper, LSP, Carrier
-from data_logger import EventLogger 
+from data_logger import EventLogger, EnvironmentStateLogger
 
 from common import Request, Event, Event_Type, Agent_Type
 from vehicles import Truck, Train, Barge, Vehicle
@@ -18,6 +18,8 @@ from vehicles import Truck, Train, Barge, Vehicle
 num_shippers = 1
 num_lsps = 2
 num_carriers = 4
+
+load_time = 1
 
 # ---------------------------------------------------------
 
@@ -55,6 +57,7 @@ class Environment:
     vehicle_matrices: Dict[str, np.ndarray] = None
     events: EventQueue = None
     event_logger: EventLogger = EventLogger()
+    state_logger: EnvironmentStateLogger = EnvironmentStateLogger()
     step_size: int = 0
 
     def step(self):
@@ -71,17 +74,18 @@ class Environment:
                     event = self.events.get()
                     self.process_event(event)
                 else:
+                    self.state_logger.save_state(self.time, self.vehicle_matrices, self.vehicles)
                     break
         else:
             print("No more events to process")
             return None
-        print(self.agents[Agent_Type.CARRIER][0].fleet)
+        # print([vehicle.vehicle_id for vehicle in self.agents[Agent_Type.CARRIER][0].fleet])
         # print(self.vehicle_matrices["Truck"])
         return self.vehicle_matrices
     
     def process_event(self, event: Event):
         if(event.type == Event_Type.ARRIVED_REQUEST):
-            self.spawn_vehicle(event)
+            self.create_service(event)
         elif(event.type == Event_Type.DISPATCH_VEHICLE):
             self.dispatch_vehicle(event)
         elif(event.type == Event_Type.DELIVER):
@@ -89,19 +93,22 @@ class Environment:
 
         self.event_logger.save_event(event)
 
-    def spawn_vehicle(self, event: Event):
+    def create_service(self, event: Event):
         request_id = event.request_id
         request : Request = self.requests[request_id]
         shipper_id = request.selected_shipper
         shipper : Shipper = self.agents[Agent_Type.SHIPPER][shipper_id]
         origin = request.origin
 
+        # RUN THE DECISION MAKING ALGORITHM TO DECIDE WHICH VEHICLES WILL EXECUTE THIS REQUEST
+        #############################################
         delivery_time = shipper.contact_lsps(request)
+        #############################################
 
-        delivery_event = Event(self.time + delivery_time + 1, Event_Type.DELIVER, request_id)
+        delivery_event = Event(self.time + delivery_time + load_time, Event_Type.DELIVER, request_id)
         self.events.put(delivery_event)
  
-        self.vehicle_matrices["Trucks"][origin][origin] += 1
+        self.vehicle_matrices["Truck"][origin][origin] += 1
         self.event_logger.save_event(event)
         # print(f"Vehicle spawned")
 
@@ -111,8 +118,8 @@ class Environment:
         origin = request.origin
         destination = request.destination
 
-        self.vehicle_matrices["Trucks"][origin][origin] -= 1
-        self.vehicle_matrices["Trucks"][origin][destination] += 1
+        self.vehicle_matrices["Truck"][origin][origin] -= 1
+        self.vehicle_matrices["Truck"][origin][destination] += 1
         
 
     def deliver(self, event: Event):
@@ -121,10 +128,12 @@ class Environment:
         origin = request.origin
         destination = request.destination
 
-        self.vehicle_matrices["Trucks"][origin][destination] -= 1
-        self.vehicle_matrices["Trucks"][destination][destination] += 1
+        self.vehicle_matrices["Truck"][origin][destination] -= 1
+        self.vehicle_matrices["Truck"][destination][destination] += 1
 
 # ---------------------------------------------------------
+
+
 
 def generate_and_assign_agents(num_shippers: int, num_lsps: int, num_carriers: int, vehicles: List[Vehicle]):
     
@@ -154,7 +163,7 @@ def generate_and_assign_agents(num_shippers: int, num_lsps: int, num_carriers: i
 
     for vehicle in vehicles:
         vehicle_carrier_id = vehicle.carrier_id
-        agents[Agent_Type.CARRIER][vehicle_carrier_id].fleet.append(vehicle.vehicle_id)
+        agents[Agent_Type.CARRIER][vehicle_carrier_id].fleet.append(vehicle)
 
     print("Agents assigned successfully")
 
@@ -172,7 +181,7 @@ def generate_requests_and_events(requests_df : pd.DataFrame, dist_matrix):
         request_id = int(requests_df.iloc[i]['id'])
         origin = int(requests_df.iloc[i]['orig'])
         destination = int(requests_df.iloc[i]['dest'])
-        volume = int(requests_df.iloc[i]['amount'])
+        amount = int(requests_df.iloc[i]['amount'])
         # price = int(requests_df.iloc[i]['price'])
         time_window: Tuple[int, int] = (int(requests_df.iloc[i]['lw']), int(requests_df.iloc[i]['uw']))
         selected_shipper = int(requests_df.iloc[i]['selected']) - 1
@@ -181,14 +190,14 @@ def generate_requests_and_events(requests_df : pd.DataFrame, dist_matrix):
         
         new_request = Request(
                 id=request_id, origin=origin, 
-                destination=destination, volume=volume, time_window=time_window, 
+                destination=destination, amount=amount, time_window=time_window, 
                 selected_shipper=selected_shipper, distance=distance)
         
         requests[i] = new_request
 
-        spawn_vehicle_event = Event(time_window[0] - 1, Event_Type.ARRIVED_REQUEST, request_id)
-        dispatch_vehicle_event = Event(time_window[0], Event_Type.DISPATCH_VEHICLE, request_id)
-        events.put(spawn_vehicle_event)
+        arrived_request_event = Event(time_window[0], Event_Type.ARRIVED_REQUEST, request_id)
+        dispatch_vehicle_event = Event(time_window[0] + load_time, Event_Type.DISPATCH_VEHICLE, request_id)
+        events.put(arrived_request_event)
         events.put(dispatch_vehicle_event)
 
     print("Requests and events created successfully")
@@ -223,8 +232,16 @@ def generate_vehicles(vehicles_df: pd.DataFrame, vehicle_matrices: Dict[str, np.
         
     print("Vehicles generated successfully")
     return vehicles
-# ---------------------------------------------------------
 
+def generate_events_from_vehicles(vehicles: List[Vehicle], events: EventQueue):
+    for vehicle in vehicles:
+        if isinstance(vehicle, (Train, Barge)):
+            predefined_schedule = vehicle.schedule
+            for service in predefined_schedule:
+                event = Event(service.timestamp, Event_Type.DISPATCH_VEHICLE, service.request_id)
+                events.put(event)
+
+# ---------------------------------------------------------
 
 def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_matrix: np.ndarray, vehicles_df: pd.DataFrame, step_size: int):
 

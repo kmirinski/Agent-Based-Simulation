@@ -68,11 +68,10 @@ class Request:
     id: int
     origin: int                                         # Node ID
     destination: int                                    # Node ID
-    volume: float                                       # in m^3
+    amount: int                                         # in euro pallets
     time_window: Tuple[int, int]                        # Lower and upper bounds
     selected_shipper: int                               # Shipper ID
     distance: int                                       # in km
-    weight: float = field(default = 0.0)                # in kg
     penalization_factor: float = field(default= 0.0)    # if the request is not fulfilled within the time window
     full_truckload: bool = field(default = True)        # whether the request can be on the truck with other requests
     is_splittable: bool = field(default = False)        # whether the request can be split into multiple trucks

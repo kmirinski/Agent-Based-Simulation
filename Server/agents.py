@@ -4,6 +4,7 @@ import numpy as np
 from typing import List, Tuple
 
 from common import Request
+from vehicles import Vehicle, VehicleStatus
 
 class Carrier:
     """
@@ -12,15 +13,21 @@ class Carrier:
     """
     def __init__(self, id):
         self.id = id
-        self.fleet: List[int] = []
-        self.price_per_hour = 10
+        self.fleet: List[Vehicle] = []
 
     def quota(self, request: Request) -> Tuple[float, float]:
         distance = request.distance
-        speed = 60 + random.randint(-10, 10)
-        time = distance / speed
-        price = time * self.price_per_hour
-        return price, time 
+        min_price = float('inf')
+        best_time = None
+
+        for vehicle in self.fleet:
+            time = distance / vehicle.speed_per_timestep
+            price = time * vehicle.unit_cost
+            if price < min_price:
+                min_price = price
+                best_time = time
+
+        return min_price, best_time
     
 class LSP:
     """"
@@ -61,10 +68,6 @@ class Shipper:
             if best_price is None or price < best_price:
                 best_price = price
                 best_offer = (carrier_id, lsp_id, price, time)
-        return best_offer[3] 
-
-    def contact_carrier(self, request: Request):
-        pass
-
+        return best_offer[3]
 
         

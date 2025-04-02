@@ -1,24 +1,33 @@
+from enum import Enum
 import queue
-import time
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import random
 import numpy as np
 from typing import List, Tuple
 
 CONTAINER_CAPACITY = 24
 
+class VehicleStatus(Enum):
+    IDLE = 0
+    EN_ROUTE = 1
+    LOADING = 2
+    UNLOADING = 4
+
+
 # request id is going to be -1 if the service is not associated with a request
 # a truck would contain a list of services assigned by the research algorithms
 class TruckService:
-    def __init__(self, priority, origin, destination, request_id):
+    def __init__(self, priority, origin, destination, request_id, remaining_distance):
         self.priority = priority
         self.origin = origin
         self.destination = destination
+        self.remaining_distance = remaining_distance
         self.request_id = request_id
     
     def __lt__(self, other: 'TruckService'):
         return self.priority < other.priority
+
     
 class TruckServiceQueue(queue.PriorityQueue):
     def peek(self):
@@ -45,6 +54,13 @@ class Container:
         else:
             self.contents[request] = quantity
         return True
+    
+    def to_dict(self):
+        return {
+            "container_id": self.container_id,
+            "contents": self.contents,
+            "consolidated": self.consolidated
+        }
 
 @dataclass
 class Vehicle:
@@ -56,11 +72,9 @@ class Vehicle:
     emission_factor: float 
     carrier_id: int
     number_of_containers: int = 0
-    containers: List[Container] = None
-    
+    containers: list = field(default_factory=list)
+    status: VehicleStatus = VehicleStatus.IDLE
 
-    def __post_init__(self):
-        self.contaiers = np.empty(self.max_containers, dtype=Container)
 
     def load_vehicle(self, container: Container):
         if self.number_of_containers < len(self.containers):
@@ -76,6 +90,26 @@ class Vehicle:
                 self.number_of_containers -= 1
                 return True
         return False
+    
+    def to_dict(self):
+        """
+        Convert the Vehicle object to a dictionary representation.
+        
+        Returns:
+            dict: A dictionary representation of the Vehicle object.
+        """
+        return {
+            "vehicle_id": self.vehicle_id,
+            "name": self.name,
+            "current_location": self.current_location,
+            "max_containers": self.max_containers,
+            "unit_cost": self.unit_cost,
+            "emission_factor": self.emission_factor,
+            "carrier_id": self.carrier_id,
+            "number_of_containers": self.number_of_containers,
+            "containers": [container.to_dict() for container in self.containers if container is not None],
+            "status": self.status.name
+        }
 
 @dataclass
 class Truck(Vehicle):
@@ -86,8 +120,8 @@ class Truck(Vehicle):
 
 @dataclass
 class Train(Vehicle):
-    pass
+    predefined_schedule: List[Tuple[int, int]] = None
     
 @dataclass
 class Barge(Vehicle):
-    pass
+    predefined_schedule: List[Tuple[int, int]] = None

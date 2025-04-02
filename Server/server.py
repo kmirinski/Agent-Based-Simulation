@@ -188,18 +188,26 @@ def initialize():
     environment = build_environment(requests_df, nodes_df_env, dist_matrix, vehicles_df, step_size)
 
     create_folder_and_file(FOLDER_NAME, EVENT_FILE, EVENTS_FILE_PATH)
+    create_folder_and_file(FOLDER_NAME, ENVIRONMENT_STATES_FILE, ENVIRONMENT_STATES_FILE_PATH)
+    create_folder_and_file(FOLDER_NAME, VEHICLE_STATES_FILE, VEHICLE_STATES_FILE_PATH)
+    create_folder_and_file(FOLDER_NAME, CALCULATIONS_FILE, CALCULATIONS_FILE_PATH)
 
     return network, environment
 
 def run_simulation():
-    asyncio.run(main()) # for debug
-    # while get_snapshot():
-    #     pass
-    # print("Simulation completed")
+    # asyncio.run(main()) # for debug
+    while get_snapshot():
+        pass
+    print("Simulation completed")
     
 def save_results():
     # Save events
     environment.event_logger.log_events()
+    # Save environment states
+    environment.state_logger.log_states()
+    # Save overall calculations
+    # environment.calculations_logger.log_calculations()
+    print("Results saved successfully")
 
 def send_results():
     pass
