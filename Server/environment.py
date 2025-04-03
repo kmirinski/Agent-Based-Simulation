@@ -10,7 +10,7 @@ from agents import Shipper, LSP, Carrier
 from data_logger import EventLogger, EnvironmentStateLogger
 
 from common import Request, Event, Event_Type, Agent_Type
-from vehicles import Truck, Train, Barge, Vehicle
+from vehicles import Service, Truck, Train, Barge, Vehicle
 
 # ---------------------------------------------------------
 
@@ -80,7 +80,7 @@ class Environment:
             print("No more events to process")
             return None
         # print([vehicle.vehicle_id for vehicle in self.agents[Agent_Type.CARRIER][0].fleet])
-        # print(self.vehicle_matrices["Truck"])
+        # print(self.vehicle_matrices["Train"])
         return self.vehicle_matrices
     
     def process_event(self, event: Event):
@@ -241,9 +241,32 @@ def generate_events_from_vehicles(vehicles: List[Vehicle], events: EventQueue):
                 event = Event(service.timestamp, Event_Type.DISPATCH_VEHICLE, service.request_id)
                 events.put(event)
 
+def generate_services(services_df: pd.DataFrame, dist_matrix: np.ndarray, vehicles: List[Vehicle]):
+    services_size = len(services_df)
+
+    for i in range(services_size):
+        origin = int(services_df.iloc[i]['origin'])
+        destination = int(services_df.iloc[i]['destination'])
+        departure_time = float(services_df.iloc[i]['departure_time'])
+        arrival_time = float(services_df.iloc[i]['arrival_time'])
+        cost = float(services_df.iloc[i]['cost'])
+        capacity = int(services_df.iloc[i]['capacity'])
+        vehicle_id = int(services_df.iloc[i]['vehicle_id'])
+        remaining_distance = dist_matrix[origin][destination]
+
+        new_service = Service(
+            origin=origin, destination=destination, departure_time=departure_time, 
+            arrival_time=arrival_time, cost=cost, capacity=capacity, 
+            vehicle_id=vehicle_id, remaining_distance=remaining_distance)
+
+        vehicles[vehicle_id].services.put(new_service)
+
+    print("Services generated successfully")
 # ---------------------------------------------------------
 
-def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_matrix: np.ndarray, vehicles_df: pd.DataFrame, step_size: int):
+def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, 
+                      dist_matrix: np.ndarray, vehicles_df: pd.DataFrame, 
+                      services_df: pd.DataFrame, step_size: int):
 
     number_of_nodes = len(nodes_df)
 
@@ -253,8 +276,10 @@ def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, dist_ma
         "Barge": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
         "Container": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
     }
-
-    vehicles = generate_vehicles(vehicles_df, vehicle_matrices)
+    vehicles: List[Vehicle] = generate_vehicles(vehicles_df, vehicle_matrices)
+    generate_services(services_df, dist_matrix, vehicles)
+    vehicles[1].services.get()
+    print(vehicles[1].services.peek().__dict__)
     agents = generate_and_assign_agents(num_shippers, num_lsps, num_carriers, vehicles)
     requests, events = generate_requests_and_events(requests_df, dist_matrix)
 

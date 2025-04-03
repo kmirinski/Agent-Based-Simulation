@@ -3,7 +3,6 @@ import queue
 
 from dataclasses import dataclass, field
 import random
-import numpy as np
 from typing import List, Tuple
 
 CONTAINER_CAPACITY = 24
@@ -17,19 +16,24 @@ class VehicleStatus(Enum):
 
 # request id is going to be -1 if the service is not associated with a request
 # a truck would contain a list of services assigned by the research algorithms
-class TruckService:
-    def __init__(self, priority, origin, destination, request_id, remaining_distance):
-        self.priority = priority
+class Service:
+    def __init__(self, origin, destination, departure_time, 
+                 arrival_time, cost, capacity, vehicle_id, remaining_distance):
         self.origin = origin
         self.destination = destination
+        self.departure_time = departure_time
+        self.arrival_time = arrival_time
+        self.cost = cost
+        self.capacity = capacity
+        self.vehicle_id = vehicle_id
         self.remaining_distance = remaining_distance
-        self.request_id = request_id
+        self.requests = []
     
-    def __lt__(self, other: 'TruckService'):
-        return self.priority < other.priority
+    def __lt__(self, other: 'Service'):
+        return self.departure_time < other.departure_time
 
     
-class TruckServiceQueue(queue.PriorityQueue):
+class ServiceQueue(queue.PriorityQueue):
     def peek(self):
         if self.empty():
             return None
@@ -72,6 +76,7 @@ class Vehicle:
     emission_factor: float 
     carrier_id: int
     number_of_containers: int = 0
+    services: ServiceQueue = ServiceQueue()
     containers: list = field(default_factory=list)
     status: VehicleStatus = VehicleStatus.IDLE
 
@@ -113,7 +118,6 @@ class Vehicle:
 
 @dataclass
 class Truck(Vehicle):
-    services: TruckServiceQueue = TruckServiceQueue()
     depot: int = -1                             
     long_haul: bool = True
     speed_per_timestep: int = random.randint(40, 60) # km/h

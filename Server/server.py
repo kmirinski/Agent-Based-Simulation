@@ -138,8 +138,6 @@ def read_data_environment():
     nodes_df = pd.read_csv('Server/instance_files/param_nodes.csv')
     vehicles_df = pd.read_csv('Server/instance_files/param_vehicles.csv')
 
-    print(vehicles_df)
-
     with open('Server/instance_files/param_dist.csv') as f:
         f.readline().strip().split(',')
         dist_matrix = pd.read_csv(f, header=None).values
@@ -147,6 +145,10 @@ def read_data_environment():
     print("Data read successfully")
 
     return requests_df, nodes_df, dist_matrix, vehicles_df
+
+def read_data_services():
+    services_df = pd.read_csv('Server/instance_files/param_train_services.csv')
+    return services_df
 
 def randomize_snapshot():
     """
@@ -182,10 +184,12 @@ def initialize():
     """
     nodes_df_network, connectivity_df = read_data_network()
     requests_df, nodes_df_env, dist_matrix, vehicles_df = read_data_environment()
+    services_df = read_data_services()
+    print(services_df)
     step_size = 1
 
     network = build_network(nodes_df_network, connectivity_df)
-    environment = build_environment(requests_df, nodes_df_env, dist_matrix, vehicles_df, step_size)
+    environment = build_environment(requests_df, nodes_df_env, dist_matrix, vehicles_df, services_df, step_size)
 
     create_folder_and_file(FOLDER_NAME, EVENT_FILE, EVENTS_FILE_PATH)
     create_folder_and_file(FOLDER_NAME, ENVIRONMENT_STATES_FILE, ENVIRONMENT_STATES_FILE_PATH)
@@ -195,10 +199,10 @@ def initialize():
     return network, environment
 
 def run_simulation():
-    # asyncio.run(main()) # for debug
-    while get_snapshot():
-        pass
-    print("Simulation completed")
+    asyncio.run(main()) # for debug
+    # while get_snapshot():
+    #     pass
+    # print("Simulation completed")
     
 def save_results():
     # Save events
