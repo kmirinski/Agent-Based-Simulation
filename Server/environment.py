@@ -133,48 +133,90 @@ class Environment:
 
 # ---------------------------------------------------------
 
+def generate_vehicles(vehicles_df: pd.DataFrame, vehicle_matrices: Dict[str, np.ndarray], vehicle_list_: List[Vehicle]):
+    vehicles_size = len(vehicles_df)
 
+    for i in range(vehicles_size):
 
-def generate_and_assign_agents(num_shippers: int, num_lsps: int, num_carriers: int, vehicles: List[Vehicle]):
+        vehicle_id = int(vehicles_df.iloc[i]['id'])
+        name = vehicles_df.iloc[i]['name']
+        initial_location = (int(vehicles_df.iloc[i]['initial_location']), int(vehicles_df.iloc[i]['initial_location']))
+        max_containers = int(vehicles_df.iloc[i]['max_containers'])
+        unit_cost = float(vehicles_df.iloc[i]['unit_cost'])
+        emission_factor = float(vehicles_df.iloc[i]['emission_factor'])
+        carrier_id = int(vehicles_df.iloc[i]['carrier_id'])
+
+        if name == "Truck":
+            vehicle = Truck(vehicle_id, name, current_location=initial_location, max_containers=max_containers, 
+                            unit_cost=unit_cost, emission_factor=emission_factor, carrier_id=carrier_id)
+        if name == "Train":
+            vehicle = Train(vehicle_id, name, current_location=initial_location, max_containers=max_containers, 
+                            unit_cost=unit_cost, emission_factor=emission_factor, carrier_id=carrier_id)
+        if name == "Barge":
+            vehicle = Barge(vehicle_id, name, current_location=initial_location, max_containers=max_containers, 
+                            unit_cost=unit_cost, emission_factor=emission_factor, carrier_id=carrier_id)
+        
+        vehicle_list_[i] = vehicle
+        vehicle_matrices[name][initial_location[0]][initial_location[1]] += 1
+        
+    print("Vehicles generated successfully")
+
+def generate_services(services_df: pd.DataFrame, dist_matrix: np.ndarray, vehicles: List[Vehicle]):
+    services_size = len(services_df)
+
+    for i in range(services_size):
+        origin = int(services_df.iloc[i]['origin'])
+        destination = int(services_df.iloc[i]['destination'])
+        departure_time = float(services_df.iloc[i]['departure_time'])
+        arrival_time = float(services_df.iloc[i]['arrival_time'])
+        cost = float(services_df.iloc[i]['cost'])
+        capacity = int(services_df.iloc[i]['capacity'])
+        vehicle_id = int(services_df.iloc[i]['vehicle_id'])
+        remaining_distance = dist_matrix[origin][destination]
+
+        new_service = Service(
+            origin=origin, destination=destination, departure_time=departure_time, 
+            arrival_time=arrival_time, cost=cost, capacity=capacity, 
+            vehicle_id=vehicle_id, remaining_distance=remaining_distance)
+
+        vehicles[vehicle_id].services.put(new_service)
+
+    print("Services generated successfully")
+
+def generate_and_assign_agents(num_shippers: int, num_lsps: int, num_carriers: int, 
+                               vehicles: List[Vehicle], agent_dict: Dict[Agent_Type, List]):
     
     carriers = np.empty(num_carriers, dtype=Carrier)
     lsps = np.empty(num_lsps, dtype=LSP)
     shippers = np.empty(num_shippers, dtype=Shipper)
-    agents = {}
 
     for i in range(num_carriers):
         carriers[i] = Carrier(i)
-    agents[Agent_Type.CARRIER] = carriers
+    agent_dict[Agent_Type.CARRIER] = carriers
 
     for i in range(num_lsps):
         lsps[i] = LSP(i)
-    agents[Agent_Type.LSP] = lsps
+    agent_dict[Agent_Type.LSP] = lsps
     
     for i in range(num_shippers):
         shippers[i] = Shipper(i)
-    agents[Agent_Type.SHIPPER] = shippers
+    agent_dict[Agent_Type.SHIPPER] = shippers
 
     print("Agents generated successfully")
 
     # Hardcoded assignments
-    agents[Agent_Type.SHIPPER][0].lsp_list = [agents[Agent_Type.LSP][0], agents[Agent_Type.LSP][1]]
-    agents[Agent_Type.LSP][0].carriers = [agents[Agent_Type.CARRIER][0], agents[Agent_Type.CARRIER][1]]
-    agents[Agent_Type.LSP][1].carriers = [agents[Agent_Type.CARRIER][2], agents[Agent_Type.CARRIER][3]]
+    agent_dict[Agent_Type.SHIPPER][0].lsp_list = [agent_dict[Agent_Type.LSP][0], agent_dict[Agent_Type.LSP][1]]
+    agent_dict[Agent_Type.LSP][0].carriers = [agent_dict[Agent_Type.CARRIER][0], agent_dict[Agent_Type.CARRIER][1]]
+    agent_dict[Agent_Type.LSP][1].carriers = [agent_dict[Agent_Type.CARRIER][2], agent_dict[Agent_Type.CARRIER][3]]
 
     for vehicle in vehicles:
         vehicle_carrier_id = vehicle.carrier_id
-        agents[Agent_Type.CARRIER][vehicle_carrier_id].fleet.append(vehicle)
+        agent_dict[Agent_Type.CARRIER][vehicle_carrier_id].fleet.append(vehicle)
 
     print("Agents assigned successfully")
 
-    return agents
-
-def generate_requests_and_events(requests_df : pd.DataFrame, dist_matrix):
-    print(requests_df)
+def generate_requests_and_events(requests_df : pd.DataFrame, dist_matrix, requests: List[Request], events: EventQueue):
     request_size = len(requests_df)
-    requests = np.empty(request_size, dtype=Request)
-    events = EventQueue()
-
 
     for i in range(len(requests_df)):
         
@@ -203,36 +245,6 @@ def generate_requests_and_events(requests_df : pd.DataFrame, dist_matrix):
     print("Requests and events created successfully")
     return requests, events
 
-def generate_vehicles(vehicles_df: pd.DataFrame, vehicle_matrices: Dict[str, np.ndarray]):
-    vehicles_size = len(vehicles_df)
-    vehicles = np.empty(vehicles_size, dtype=Vehicle)
-
-    for i in range(vehicles_size):
-
-        vehicle_id = int(vehicles_df.iloc[i]['id'])
-        name = vehicles_df.iloc[i]['name']
-        initial_location = (int(vehicles_df.iloc[i]['initial_location']), int(vehicles_df.iloc[i]['initial_location']))
-        max_containers = int(vehicles_df.iloc[i]['max_containers'])
-        unit_cost = float(vehicles_df.iloc[i]['unit_cost'])
-        emission_factor = float(vehicles_df.iloc[i]['emission_factor'])
-        carrier_id = int(vehicles_df.iloc[i]['carrier_id'])
-
-        if name == "Truck":
-            vehicle = Truck(vehicle_id, name, current_location=initial_location, max_containers=max_containers, 
-                            unit_cost=unit_cost, emission_factor=emission_factor, carrier_id=carrier_id)
-        if name == "Train":
-            vehicle = Train(vehicle_id, name, current_location=initial_location, max_containers=max_containers, 
-                            unit_cost=unit_cost, emission_factor=emission_factor, carrier_id=carrier_id)
-        if name == "Barge":
-            vehicle = Barge(vehicle_id, name, current_location=initial_location, max_containers=max_containers, 
-                            unit_cost=unit_cost, emission_factor=emission_factor, carrier_id=carrier_id)
-        
-        vehicles[i] = vehicle
-        vehicle_matrices[name][initial_location[0]][initial_location[1]] += 1
-        
-    print("Vehicles generated successfully")
-    return vehicles
-
 def generate_events_from_vehicles(vehicles: List[Vehicle], events: EventQueue):
     for vehicle in vehicles:
         if isinstance(vehicle, (Train, Barge)):
@@ -241,50 +253,32 @@ def generate_events_from_vehicles(vehicles: List[Vehicle], events: EventQueue):
                 event = Event(service.timestamp, Event_Type.DISPATCH_VEHICLE, service.request_id)
                 events.put(event)
 
-def generate_services(services_df: pd.DataFrame, dist_matrix: np.ndarray, vehicles: List[Vehicle]):
-    services_size = len(services_df)
-
-    for i in range(services_size):
-        origin = int(services_df.iloc[i]['origin'])
-        destination = int(services_df.iloc[i]['destination'])
-        departure_time = float(services_df.iloc[i]['departure_time'])
-        arrival_time = float(services_df.iloc[i]['arrival_time'])
-        cost = float(services_df.iloc[i]['cost'])
-        capacity = int(services_df.iloc[i]['capacity'])
-        vehicle_id = int(services_df.iloc[i]['vehicle_id'])
-        remaining_distance = dist_matrix[origin][destination]
-
-        new_service = Service(
-            origin=origin, destination=destination, departure_time=departure_time, 
-            arrival_time=arrival_time, cost=cost, capacity=capacity, 
-            vehicle_id=vehicle_id, remaining_distance=remaining_distance)
-
-        vehicles[vehicle_id].services.put(new_service)
-
-    print("Services generated successfully")
 # ---------------------------------------------------------
 
 def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame, 
                       dist_matrix: np.ndarray, vehicles_df: pd.DataFrame, 
                       services_df: pd.DataFrame, step_size: int):
+    
+    vehicle_list = np.empty(len(vehicles_df), dtype=Vehicle)
+    request_list = np.empty(len(requests_df), dtype=Request)
+    agent_dict = {}
+    event_queue = EventQueue()
 
     number_of_nodes = len(nodes_df)
-
     vehicle_matrices = {
         "Truck": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
         "Train": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
         "Barge": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
         "Container": np.zeros((number_of_nodes, number_of_nodes), dtype=int),
     }
-    vehicles: List[Vehicle] = generate_vehicles(vehicles_df, vehicle_matrices)
-    generate_services(services_df, dist_matrix, vehicles)
-    vehicles[1].services.get()
-    print(vehicles[1].services.peek().__dict__)
-    agents = generate_and_assign_agents(num_shippers, num_lsps, num_carriers, vehicles)
-    requests, events = generate_requests_and_events(requests_df, dist_matrix)
+
+    generate_vehicles(vehicles_df, vehicle_matrices, vehicle_list)
+    generate_services(services_df, dist_matrix, vehicle_list)
+    generate_and_assign_agents(num_shippers, num_lsps, num_carriers, vehicle_list, agent_dict)
+    generate_requests_and_events(requests_df, dist_matrix, request_list, event_queue)
 
     print("Environment built successfully")
 
-    return Environment(requests=requests, agents=agents, vehicles=vehicles,
-                       vehicle_matrices=vehicle_matrices, events=events, step_size=step_size)
+    return Environment(requests=request_list, agents=agent_dict, vehicles=vehicle_list,
+                       vehicle_matrices=vehicle_matrices, events=event_queue, step_size=step_size)
 
