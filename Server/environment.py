@@ -10,7 +10,7 @@ from agents import Shipper, LSP, Carrier
 from data_logger import EventLogger, EnvironmentStateLogger
 
 from common import Request, Event, Event_Type, Agent_Type
-from vehicles import Service, Truck, Train, Barge, Vehicle
+from vehicles import Service, Truck, Train, Barge, Vehicle, VehicleStatus
 
 # ---------------------------------------------------------
 
@@ -61,7 +61,7 @@ class Environment:
     step_size: int = 0
 
     def step(self):
-        # self.events.print_all_events()
+        self.events.print_all_events()
         if(not self.events.empty()):
             self.time += self.step_size
             print(f"Time: {self.time}")
@@ -84,52 +84,141 @@ class Environment:
         return self.vehicle_matrices
     
     def process_event(self, event: Event):
-        if(event.type == Event_Type.ARRIVED_REQUEST):
-            self.create_service(event)
-        elif(event.type == Event_Type.DISPATCH_VEHICLE):
-            self.dispatch_vehicle(event)
-        elif(event.type == Event_Type.DELIVER):
-            self.deliver(event)
+        event_handlers = {
+            Event_Type.REQUEST_ARRIVED: self.request_arrived,
+            Event_Type.REQUEST_COMPLETED: self.request_completed,
+            Event_Type.TRUCK_DEPARTED: self.vehicle_departed,
+            Event_Type.TRAIN_DEPARTED: self.vehicle_departed,
+            Event_Type.BARGE_DEPARTED: self.vehicle_departed,
+            Event_Type.TRUCK_ARRIVED: self.vehicle_arrived,
+            Event_Type.TRAIN_ARRIVED: self.vehicle_arrived,
+            Event_Type.BARGE_ARRIVED: self.vehicle_arrived
+        }
+        
+        handler = event_handlers.get(event.type)
+        if handler:
+            handler(event)
+        else:
+            raise ValueError(f"No handler for event type: {event.type}")
 
-        self.event_logger.save_event(event)
 
-    def create_service(self, event: Event):
+    def request_arrived(self, event: Event):
         request_id = event.request_id
         request : Request = self.requests[request_id]
+
         shipper_id = request.selected_shipper
         shipper : Shipper = self.agents[Agent_Type.SHIPPER][shipper_id]
-        origin = request.origin
 
         # RUN THE DECISION MAKING ALGORITHM TO DECIDE WHICH VEHICLES WILL EXECUTE THIS REQUEST
         #############################################
-        delivery_time = shipper.contact_lsps(request)
+        # delivery_time = shipper.contact_lsps(request)
+
+        vehicles_to_depart: List[Tuple[int, int, int]] = shipper.decision_making(request)
         #############################################
 
-        delivery_event = Event(self.time + delivery_time + load_time, Event_Type.DELIVER, request_id)
-        self.events.put(delivery_event)
- 
-        self.vehicle_matrices["Truck"][origin][origin] += 1
-        self.event_logger.save_event(event)
-        # print(f"Vehicle spawned")
+        request.services += len(vehicles_to_depart)
 
-    def dispatch_vehicle(self, event: Event):
+        for vehicle_id, amount, timestamp in vehicles_to_depart:
+            vehicle: Vehicle = self.vehicles[vehicle_id]
+            vehicle.status = VehicleStatus.LOADING
+            self.spawn_containers(request, vehicle_id, amount)
+            new_event = Event(timestamp + load_time, self.choose_departed_event(vehicle), request_id=request_id, vehicle_id=vehicle_id)
+            self.events.put(new_event)
+
+            ## FIX FOR TRUCKS ## FIX FOR ALL!!!!!
+            
+        print(f"Request arrived: {request_id} - {request.origin} -> {request.destination}")
+
+    def request_completed(self, event: Event):
         request_id = event.request_id
-        request: Request = self.requests[request_id]
-        origin = request.origin
-        destination = request.destination
 
-        self.vehicle_matrices["Truck"][origin][origin] -= 1
-        self.vehicle_matrices["Truck"][origin][destination] += 1
+        # Last vehicle to arrive for the request
+        vehicle_id = event.vehicle_id
+        vehicle = self.vehicles[vehicle_id]
+        vehicle.status = VehicleStatus.IDLE
+        print(f"Request {request_id} completed at time {self.time}")
+        
         
 
-    def deliver(self, event: Event):
+    def vehicle_departed(self, event: Event):
+        vehicle_id = event.vehicle_id
         request_id = event.request_id
+
         request: Request = self.requests[request_id]
+        vehicle: Vehicle = self.vehicles[vehicle_id]
+
+        destination = request.destination
+        origin = request.origin
+
+        # Update location
+        self.vehicle_matrices[vehicle.name][origin][origin] -= 1
+        self.vehicle_matrices[vehicle.name][origin][destination] += 1
+        self.vehicle_matrices["Container"][origin][origin] -= vehicle.number_of_containers
+        self.vehicle_matrices["Container"][origin][destination] += vehicle.number_of_containers
+        vehicle.current_location = [origin, destination]
+        
+        # Update status
+        vehicle.status = VehicleStatus.EN_ROUTE
+        print(f"Vehicle {vehicle_id} departed from {origin} for request {request_id} at time {self.time}")
+
+    def vehicle_arrived(self, event: Event):
+        request_id = event.request_id
+        vehicle_id = event.vehicle_id
+
+        request: Request = self.requests[request_id]
+        vehicle: Vehicle = self.vehicles[vehicle_id]
+        
         origin = request.origin
         destination = request.destination
 
-        self.vehicle_matrices["Truck"][origin][destination] -= 1
-        self.vehicle_matrices["Truck"][destination][destination] += 1
+        # Update location
+        self.vehicle_matrices[vehicle.name][origin][destination] -= 1
+        self.vehicle_matrices[vehicle.name][destination][destination] += 1
+        self.vehicle_matrices["Container"][origin][destination] -= vehicle.number_of_containers
+        self.vehicle_matrices["Container"][destination][destination] += vehicle.number_of_containers
+        vehicle.current_location = [destination, destination]
+
+        # Update status
+        vehicle.status = VehicleStatus.UNLOADING
+        vehicle.services.get()
+        request.services -= 1
+
+        if request.is_request_fulfilled():
+            new_event = Event(self.time + load_time, Event_Type.REQUEST_COMPLETED, request_id=request_id, vehicle=vehicle)
+            self.events.put(new_event)
+
+        
+        print(f"Vehicle {vehicle_id} arrived at {destination} for request {request_id} at time {self.time}")
+        
+    def spawn_containers(self, vehicle: Vehicle, request_id: int, amount: int):
+        # Algorithm ensures that the vehicle has enough capacity for the amount
+        number_of_containers = amount // 24 + 1
+        vehicle.load_vehicle(request_id, number_of_containers)
+        self.vehicle_matrices["Container"][vehicle.current_location[0]][vehicle.current_location[1]] += number_of_containers
+
+    def choose_arrived_event(self, vehicle: Vehicle):
+        if isinstance(vehicle, Truck):
+            return Event_Type.TRUCK_ARRIVED
+        elif isinstance(vehicle, Train):
+            return Event_Type.TRAIN_ARRIVED
+        elif isinstance(vehicle, Barge):
+            return Event_Type.BARGE_ARRIVED
+        else:
+            raise ValueError("Unknown vehicle type")
+
+    def choose_departed_event(self, vehicle: Vehicle):
+        if isinstance(vehicle, Truck):
+            return Event_Type.TRUCK_DEPARTED
+        elif isinstance(vehicle, Train):
+            return Event_Type.TRAIN_DEPARTED
+        elif isinstance(vehicle, Barge):
+            return Event_Type.BARGE_DEPARTED
+        else:
+            raise ValueError("Unknown vehicle type")
+
+
+        
+        
 
 # ---------------------------------------------------------
 
@@ -161,7 +250,7 @@ def generate_vehicles(vehicles_df: pd.DataFrame, vehicle_matrices: Dict[str, np.
         
     print("Vehicles generated successfully")
 
-def generate_services(services_df: pd.DataFrame, dist_matrix: np.ndarray, vehicles: List[Vehicle]):
+def generate_services_and_events(services_df: pd.DataFrame, dist_matrix: np.ndarray, vehicles: List[Vehicle], event_queue: EventQueue):
     services_size = len(services_df)
 
     for i in range(services_size):
@@ -178,6 +267,12 @@ def generate_services(services_df: pd.DataFrame, dist_matrix: np.ndarray, vehicl
             origin=origin, destination=destination, departure_time=departure_time, 
             arrival_time=arrival_time, cost=cost, capacity=capacity, 
             vehicle_id=vehicle_id, remaining_distance=remaining_distance)
+        
+        # Check the vehicle ID - might need to change the Event class
+        departure_event = Event(departure_time, type=Event_Type.TRAIN_DEPARTED, vehicle_id=vehicle_id)
+        arrival_event = Event(arrival_time, type=Event_Type.TRAIN_ARRIVED, vehicle_id=vehicle_id)
+        event_queue.put(departure_event)
+        event_queue.put(arrival_event)
 
         vehicles[vehicle_id].services.put(new_service)
 
@@ -216,7 +311,6 @@ def generate_and_assign_agents(num_shippers: int, num_lsps: int, num_carriers: i
     print("Agents assigned successfully")
 
 def generate_requests_and_events(requests_df : pd.DataFrame, dist_matrix, requests: List[Request], events: EventQueue):
-    request_size = len(requests_df)
 
     for i in range(len(requests_df)):
         
@@ -235,23 +329,13 @@ def generate_requests_and_events(requests_df : pd.DataFrame, dist_matrix, reques
                 destination=destination, amount=amount, time_window=time_window, 
                 selected_shipper=selected_shipper, distance=distance)
         
-        requests[i] = new_request
+        requests[i] = new_request   
 
-        arrived_request_event = Event(time_window[0], Event_Type.ARRIVED_REQUEST, request_id)
-        dispatch_vehicle_event = Event(time_window[0] + load_time, Event_Type.DISPATCH_VEHICLE, request_id)
-        events.put(arrived_request_event)
-        events.put(dispatch_vehicle_event)
+        arrived_request_event = Event(time_window[0], Event_Type.REQUEST_ARRIVED, request_id=request_id)
+        events.put(arrived_request_event) 
 
     print("Requests and events created successfully")
-    return requests, events
 
-def generate_events_from_vehicles(vehicles: List[Vehicle], events: EventQueue):
-    for vehicle in vehicles:
-        if isinstance(vehicle, (Train, Barge)):
-            predefined_schedule = vehicle.schedule
-            for service in predefined_schedule:
-                event = Event(service.timestamp, Event_Type.DISPATCH_VEHICLE, service.request_id)
-                events.put(event)
 
 # ---------------------------------------------------------
 
@@ -273,7 +357,7 @@ def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame,
     }
 
     generate_vehicles(vehicles_df, vehicle_matrices, vehicle_list)
-    generate_services(services_df, dist_matrix, vehicle_list)
+    generate_services_and_events(services_df, dist_matrix, vehicle_list, event_queue)
     generate_and_assign_agents(num_shippers, num_lsps, num_carriers, vehicle_list, agent_dict)
     generate_requests_and_events(requests_df, dist_matrix, request_list, event_queue)
 

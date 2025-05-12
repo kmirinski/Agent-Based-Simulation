@@ -3,7 +3,7 @@ import queue
 
 from dataclasses import dataclass, field
 import random
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 CONTAINER_CAPACITY = 24
 
@@ -44,27 +44,20 @@ class ServiceQueue(queue.PriorityQueue):
         for service in self.queue:
             print(service)
 
-@dataclass
-class Container:
-    container_id: int
-    contents: Tuple[int, int]
-    consolidated: bool
-    capacity = CONTAINER_CAPACITY
+# @dataclass
+# class Container:
+#     container_id: int
+#     current_location: Tuple[int, int]
+#     load: int = 0
+#     consolidated: bool = True
+#     capacity = CONTAINER_CAPACITY
 
-    # The research algorithms will be assumed to always produce feasible results
-    def load_container(self, request: int, quantity: int):
-        if request in self.contents:
-            self.contents[request] += quantity
-        else:
-            self.contents[request] = quantity
-        return True
-    
-    def to_dict(self):
-        return {
-            "container_id": self.container_id,
-            "contents": self.contents,
-            "consolidated": self.consolidated
-        }
+#     # The research algorithms will be assumed to always produce feasible results
+#     def load_container(self, amount: int) -> bool:
+#         if self.load + amount <= self.capacity:
+#             self.load += amount
+#             return True
+#         return False
 
 @dataclass
 class Vehicle:
@@ -77,16 +70,20 @@ class Vehicle:
     carrier_id: int
     number_of_containers: int = 0
     services: ServiceQueue = ServiceQueue()
-    containers: list = field(default_factory=list)
+    containers: Dict[int, int] = field(default_factory=dict)            # Key is request id, value is quantity
     status: VehicleStatus = VehicleStatus.IDLE
 
 
-    def load_vehicle(self, container: Container):
-        if self.number_of_containers < len(self.containers):
-            self.containers[self.number_of_containers] = container
+    def load_vehicle(self, request_id: int, amount: int) -> bool:
+        if self.number_of_containers < self.max_containers:
+            if request_id in self.containers:
+                self.containers[request_id] += amount
+            else:
+                self.containers[request_id] = amount
             self.number_of_containers += 1
             return True
-        return False
+        else:
+            return False
 
     def unload_container(self, container_id: int):
         for i in range(self.number_of_containers):
@@ -112,7 +109,7 @@ class Vehicle:
             "emission_factor": self.emission_factor,
             "carrier_id": self.carrier_id,
             "number_of_containers": self.number_of_containers,
-            "containers": [container.to_dict() for container in self.containers if container is not None],
+            "containers": dict(self.containers),
             "status": self.status.name
         }
 
@@ -124,8 +121,8 @@ class Truck(Vehicle):
 
 @dataclass
 class Train(Vehicle):
-    predefined_schedule: List[Tuple[int, int]] = None
-    
+    pass
+
 @dataclass
 class Barge(Vehicle):
-    predefined_schedule: List[Tuple[int, int]] = None
+    pass

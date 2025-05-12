@@ -69,5 +69,9 @@ class Shipper:
                 best_price = price
                 best_offer = (carrier_id, lsp_id, price, time)
         return best_offer[3]
+    
+    def decision_making(self, request: Request) -> Tuple[int, int, float, float]:
+        pass
+
 
         

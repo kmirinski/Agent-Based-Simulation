@@ -186,6 +186,8 @@ def initialize():
     requests_df, nodes_df_env, dist_matrix, vehicles_df = read_data_environment()
     services_df = read_data_services()
     print(services_df)
+    print("#########################")
+    print(requests_df)
     step_size = 1
 
     network = build_network(nodes_df_network, connectivity_df)

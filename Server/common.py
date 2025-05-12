@@ -54,9 +54,16 @@ class NetworkVehicle:
     quantity: int
 
 class Event_Type(Enum):
-    ARRIVED_REQUEST = 0
-    DISPATCH_VEHICLE = 1
-    DELIVER = 2
+    REQUEST_ARRIVED = 0
+    REQUEST_COMPLETED = 1
+
+    TRUCK_DEPARTED = 2
+    TRAIN_DEPARTED = 3
+    BARGE_DEPARTED = 4
+
+    TRUCK_ARRIVED = 5
+    TRAIN_ARRIVED = 6
+    BARGE_ARRIVED = 7
 
 class Agent_Type(Enum):
     SHIPPER = 0
@@ -72,16 +79,26 @@ class Request:
     time_window: Tuple[int, int]                        # Lower and upper bounds
     selected_shipper: int                               # Shipper ID
     distance: int                                       # in km
-    penalization_factor: float = field(default= 0.0)    # if the request is not fulfilled within the time window
-    full_truckload: bool = field(default = True)        # whether the request can be on the truck with other requests
-    is_splittable: bool = field(default = False)        # whether the request can be split into multiple trucks
+
+    services: int = field(default=0)                    # Number of services associated with the request
+
+    def is_request_fulfilled(self):
+        return self.services == 0
+
+
+
+    # penalization_factor: float = field(default= 0.0)    # if the request is not fulfilled within the time window
+    # full_truckload: bool = field(default = True)        # whether the request can be on the truck with other requests
+    # is_splittable: bool = field(default = False)        # whether the request can be split into multiple trucks
+
 
 
 @dataclass
 class Event:
     timestamp: int
     type: Event_Type
-    request_id: int
+    request_id: int = -1
+    vehicle_id: int = -1
     
     def __lt__(self, other: 'Event'):
         return self.timestamp < other.timestamp
