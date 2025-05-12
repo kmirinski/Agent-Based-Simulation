@@ -3,10 +3,13 @@ import tornado
 import asyncio
 import json
 import random
-from network import build_network, Vehicle
+from network import build_network
+from environment import build_environment
+from data_logger import *
 import pandas as pd
 import numpy as np
 
+# ---------------------------------------------------------
 
 class SetupHandler(tornado.web.RequestHandler):
     """
@@ -32,7 +35,6 @@ class SetupHandler(tornado.web.RequestHandler):
 
         # Send the response as JSON
         self.write(json.dumps(response))
-
 
 class NodeHandler(tornado.web.RequestHandler):
     """
@@ -67,7 +69,6 @@ class LinkHandler(tornado.web.RequestHandler):
         vehicles = [asdict(vehicle) for vehicle in network.link_vehicles[link_id]]
 
         self.write(json.dumps(vehicles))
-    
 
 class SnapshotHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
@@ -77,7 +78,8 @@ class SnapshotHandler(tornado.web.RequestHandler):
         self.set_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
     def get(self): 
-        randomize_snapshot()
+        # randomize_snapshot()
+        get_snapshot()
         
         link_intensites =  [ sum([vehicle.quantity for vehicle in vehicles]) for vehicles in network.link_vehicles] 
         response = {
@@ -85,8 +87,7 @@ class SnapshotHandler(tornado.web.RequestHandler):
         }
         self.write(json.dumps(response))
 
-
-
+# ---------------------------------------------------------
 
 def make_app():
     return tornado.web.Application([
@@ -101,10 +102,9 @@ async def main():
     app.listen(8888)
     await asyncio.Event().wait()
 
+# ---------------------------------------------------------
 
-
-
-if __name__ == "__main__":
+def read_data_network():
     city_names = ["Amsterdam", "Brussel", "Antwerp"]
     city_coordinates = [
         [4.9041, 52.3676],
@@ -126,30 +126,104 @@ if __name__ == "__main__":
         (1, 2),  # Brussel to Antwerp
         (2, 1)   # Antwerp to Brussel
     ]
+
     connectivity_df = pd.DataFrame(connectivity_data, columns=['origin', 'destination'])
     connectivity_df['origin'] = connectivity_df['origin']
     connectivity_df['destination'] = connectivity_df['destination']
 
-    network = build_network(nodes_df, connectivity_df)
+    return nodes_df, connectivity_df
 
+def read_data_environment():
+    requests_df = pd.read_csv('Server/instance_files/param_demand_5.csv')
+    nodes_df = pd.read_csv('Server/instance_files/param_nodes.csv')
+    vehicles_df = pd.read_csv('Server/instance_files/param_vehicles.csv')
 
-    def randomize_snapshot():
-        """
-        for testing only, randomizes resources in network
-        """
+    with open('Server/instance_files/param_dist.csv') as f:
+        f.readline().strip().split(',')
+        dist_matrix = pd.read_csv(f, header=None).values
 
-        empty_trucks = np.array([
-            [random.randint(1,100), random.randint(1,100), random.randint(1,100)],
-            [0, random.randint(1,100), random.randint(1,100)],
-            [0, random.randint(1,100), random.randint(1,100)]
-        ]) # same nonzero entries as connectivity matrix, except with diagonals
-        containers = np.array([
-            [random.randint(1,100), random.randint(1,100), random.randint(1,100)],
-            [0, random.randint(1,100), random.randint(1,100)],
-            [0, random.randint(1,100), random.randint(1,100)]
-        ]) 
-        
-        network.update_vehicles({"Empty Truck": empty_trucks, "Container": containers})
+    print("Data read successfully")
+
+    return requests_df, nodes_df, dist_matrix, vehicles_df
+
+def read_data_services():
+    services_df = pd.read_csv('Server/instance_files/param_train_barge_services.csv')
+    return services_df
+
+def randomize_snapshot():
+    """
+    for testing only, randomizes resources in network
+    """
+
+    empty_trucks = np.array([
+        [random.randint(1,100), random.randint(1,100), random.randint(1,100)],
+        [0, random.randint(1,100), random.randint(1,100)],
+        [0, random.randint(1,100), random.randint(1,100)]
+    ]) # same nonzero entries as connectivity matrix, except with diagonals
+    containers = np.array([
+        [random.randint(1,100), random.randint(1,100), random.randint(1,100)],
+        [0, random.randint(1,100), random.randint(1,100)],
+        [0, random.randint(1,100), random.randint(1,100)]
+    ]) 
     
+    network.update_vehicles({"Empty Truck": empty_trucks, "Container": containers})
 
-    asyncio.run(main())
+def get_snapshot():
+    vehicle_matrix = environment.step()
+    if vehicle_matrix is not None:
+        network.update_vehicles(vehicle_matrix)
+        return True
+    else:
+        return False
+
+# ---------------------------------------------------------
+
+def initialize():
+    """
+    Initialize the simulation by reading the data and creating the network and environment objects.
+    """
+    nodes_df_network, connectivity_df = read_data_network()
+    requests_df, nodes_df_env, dist_matrix, vehicles_df = read_data_environment()
+    services_df = read_data_services()
+    print(services_df)
+    print("#########################")
+    print(requests_df)
+    step_size = 1
+
+    network = build_network(nodes_df_network, connectivity_df)
+    environment = build_environment(requests_df, nodes_df_env, dist_matrix, vehicles_df, services_df, step_size)
+
+    create_folder_and_file(FOLDER_NAME, EVENT_FILE, EVENTS_FILE_PATH)
+    create_folder_and_file(FOLDER_NAME, ENVIRONMENT_STATES_FILE, ENVIRONMENT_STATES_FILE_PATH)
+    create_folder_and_file(FOLDER_NAME, VEHICLE_STATES_FILE, VEHICLE_STATES_FILE_PATH)
+    create_folder_and_file(FOLDER_NAME, CALCULATIONS_FILE, CALCULATIONS_FILE_PATH)
+
+    return network, environment
+
+def run_simulation():
+    asyncio.run(main()) # for debug
+    # while get_snapshot():
+    #     pass
+    # print("Simulation completed")
+    
+def save_results():
+    # Save events
+    environment.event_logger.log_events()
+    # Save environment states
+    environment.state_logger.log_states()
+    # Save overall calculations
+    # environment.calculations_logger.log_calculations()
+    print("Results saved successfully")
+
+def send_results():
+    pass
+
+# ---------------------------------------------------------
+
+if __name__ == "__main__":
+
+    network, environment = initialize()
+    run_simulation()
+    save_results()
+    send_results()
+    
