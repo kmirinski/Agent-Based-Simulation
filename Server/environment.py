@@ -134,10 +134,11 @@ class Environment:
 
                     self.spawn_containers(vehicle, request_id, amount)
 
-                    new_event_departure = Event(service.departure_time + LOAD_TIME, self.choose_departed_event(vehicle), request_id=request_id, vehicle_id=vehicle_id, request_service_id=rs_index)
-                    new_event_arrival = Event(service.arrival_time, self.choose_arrived_event(vehicle), request_id=request_id, vehicle_id=vehicle_id, request_service_id=rs_index)
+                    new_event_departure = Event(service.departure_time + LOAD_TIME, choose_departed_event(vehicle), request_id=request_id, vehicle_id=vehicle_id, request_service_id=rs_index)
+                    new_event_arrival = Event(service.arrival_time, choose_arrived_event(vehicle), request_id=request_id, vehicle_id=vehicle_id, request_service_id=rs_index)
                     self.events.put(new_event_departure)
                     self.events.put(new_event_arrival)
+
             
         print(f"Request {request_id} arrived: {request.origin} -> {request.destination}")
 
@@ -207,9 +208,11 @@ class Environment:
         # Algorithm ensures that the vehicle has enough capacity for the amount
         number_of_containers = amount // 24 + 1
         vehicle.load_vehicle(request_id, number_of_containers)
-        self.vehicle_matrices["Container"][vehicle.current_location[0]][vehicle.current_location[1]] += number_of_containers
+        self.vehicle_matrices["Container"][vehicle.current_location[0]][vehicle.current_location[1]] += number_of_containers 
 
-    def choose_arrived_event(self, vehicle: Vehicle):
+# ---------------------------------------------------------
+
+def choose_arrived_event(vehicle: Vehicle):
         if isinstance(vehicle, Truck):
             return Event_Type.TRUCK_ARRIVED
         elif isinstance(vehicle, Train):
@@ -219,21 +222,15 @@ class Environment:
         else:
             raise ValueError("Unknown vehicle type")
 
-    def choose_departed_event(self, vehicle: Vehicle):
-        if isinstance(vehicle, Truck):
-            return Event_Type.TRUCK_DEPARTED
-        elif isinstance(vehicle, Train):
-            return Event_Type.TRAIN_DEPARTED
-        elif isinstance(vehicle, Barge):
-            return Event_Type.BARGE_DEPARTED
-        else:
-            raise ValueError("Unknown vehicle type")
-
-
-        
-        
-
-# ---------------------------------------------------------
+def choose_departed_event(vehicle: Vehicle):
+    if isinstance(vehicle, Truck):
+        return Event_Type.TRUCK_DEPARTED
+    elif isinstance(vehicle, Train):
+        return Event_Type.TRAIN_DEPARTED
+    elif isinstance(vehicle, Barge):
+        return Event_Type.BARGE_DEPARTED
+    else:
+        raise ValueError("Unknown vehicle type")
 
 def generate_vehicles(vehicles_df: pd.DataFrame, vehicle_matrices: Dict[str, np.ndarray], vehicle_list_: List[Vehicle]):
     vehicles_size = len(vehicles_df)
@@ -282,13 +279,8 @@ def generate_services_and_events(services_df: pd.DataFrame, dist_matrix: np.ndar
             arrival_time=arrival_time, cost=cost, capacity=capacity, 
             vehicle_id=vehicle_id, remaining_distance=remaining_distance)
         
-        # Check the vehicle ID - might need to change the Event class
-        if type_of_service == "Train":
-            departure_event = Event(departure_time, type=Event_Type.TRAIN_DEPARTED, vehicle_id=vehicle_id)
-            arrival_event = Event(arrival_time, type=Event_Type.TRAIN_ARRIVED, vehicle_id=vehicle_id)
-        elif type_of_service == "Barge":
-            departure_event = Event(departure_time, type=Event_Type.BARGE_DEPARTED, vehicle_id=vehicle_id)
-            arrival_event = Event(arrival_time, type=Event_Type.BARGE_ARRIVED, vehicle_id=vehicle_id)
+        departure_event = Event(departure_time, type=choose_departed_event(vehicles[vehicle_id]), vehicle_id=vehicle_id)
+        arrival_event = Event(arrival_time, type=choose_arrived_event(vehicles[vehicle_id]), vehicle_id=vehicle_id)
         
         event_queue.put(departure_event)
         event_queue.put(arrival_event)
