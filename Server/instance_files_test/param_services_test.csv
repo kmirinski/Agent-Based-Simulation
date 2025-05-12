@@ -1,0 +1,2 @@
+type,origin,destination,departure_time,arrival_time,cost,capacity,vehicle_id
+Train,2,1,67,70,41.59,90,0
