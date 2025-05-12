@@ -56,6 +56,7 @@ class Environment:
     vehicles: List[Vehicle] = None
     vehicle_matrices: Dict[str, np.ndarray] = None
     events: EventQueue = None
+    present_services: List[Service] = None
     event_logger: EventLogger = EventLogger()
     state_logger: EnvironmentStateLogger = EnvironmentStateLogger()
     step_size: int = 0
@@ -116,11 +117,10 @@ class Environment:
         # For example, if two services must complete before a third can start, the third service's start time 
         # will be after the later of the two finish times.
 
-        request_services: List[List[bool, Service]] = shipper.decision_making(request)
+        request_services: List[List[bool, Service]] = shipper.decision_making(request, present_services=self.present_services)
         request.services = [len(inner_list) for inner_list in request_services]
         
         #############################################
-        print(request_id)
         for rs_index in range(len(request_services)):
             request_service: List[bool, int, Service] = request_services[rs_index]
             for is_service_generated, amount, service in request_service:
@@ -130,6 +130,7 @@ class Environment:
                     vehicle_id = service.vehicle_id
                     vehicle: Vehicle = self.vehicles[vehicle_id]
                     vehicle.status = VehicleStatus.LOADING
+                    service.requests.append(request_id)
                     vehicle.services.put(service)
 
                     self.spawn_containers(vehicle, request_id, amount)
@@ -138,6 +139,9 @@ class Environment:
                     new_event_arrival = Event(service.arrival_time, choose_arrived_event(vehicle), request_id=request_id, vehicle_id=vehicle_id, request_service_id=rs_index)
                     self.events.put(new_event_departure)
                     self.events.put(new_event_arrival)
+                else:
+                    service.requests.append(request_id)
+
 
             
         print(f"Request {request_id} arrived: {request.origin} -> {request.destination}")
@@ -154,15 +158,12 @@ class Environment:
 
     def vehicle_departed(self, event: Event):
         vehicle_id = event.vehicle_id
-        request_id = event.request_id
-
         vehicle: Vehicle = self.vehicles[vehicle_id]
 
         current_service: Service = vehicle.services.peek()
         service_origin = current_service.origin
         service_destination = current_service.destination
 
-        print(vehicle.name)
         # Update location
         self.vehicle_matrices[vehicle.name][service_origin][service_origin] -= 1
         self.vehicle_matrices[vehicle.name][service_origin][service_destination] += 1
@@ -172,7 +173,7 @@ class Environment:
         
         # Update status
         vehicle.status = VehicleStatus.EN_ROUTE
-        print(f"Vehicle {vehicle_id} departed from {service_origin} for request {request_id} at time {self.time}")
+        print(f"Vehicle {vehicle_id} departed from {service_origin} for requests {', '.join(str(x) for x in current_service.requests)} at time {self.time}")
 
     def vehicle_arrived(self, event: Event):
         request_id = event.request_id
@@ -202,7 +203,7 @@ class Environment:
             self.events.put(new_event)
 
         
-        print(f"Vehicle {vehicle_id} arrived at {service_destination} for request {request_id} at time {self.time}")
+        print(f"Vehicle {vehicle_id} arrived at {service_destination} for requests {', '.join(str(x) for x in current_service.requests)} at time {self.time}")
         
     def spawn_containers(self, vehicle: Vehicle, request_id: int, amount: int):
         # Algorithm ensures that the vehicle has enough capacity for the amount
@@ -260,11 +261,11 @@ def generate_vehicles(vehicles_df: pd.DataFrame, vehicle_matrices: Dict[str, np.
         
     print("Vehicles generated successfully")
 
-def generate_services_and_events(services_df: pd.DataFrame, dist_matrix: np.ndarray, vehicles: List[Vehicle], event_queue: EventQueue):
+def generate_services_and_events(services_df: pd.DataFrame, dist_matrix: np.ndarray, 
+                                 vehicles: List[Vehicle], event_queue: EventQueue, present_services: List[Service]):
     services_size = len(services_df)
 
     for i in range(services_size):
-        type_of_service = services_df.iloc[i]['type']
         origin = int(services_df.iloc[i]['origin'])
         destination = int(services_df.iloc[i]['destination'])
         departure_time = float(services_df.iloc[i]['departure_time'])
@@ -278,6 +279,8 @@ def generate_services_and_events(services_df: pd.DataFrame, dist_matrix: np.ndar
             origin=origin, destination=destination, departure_time=departure_time, 
             arrival_time=arrival_time, cost=cost, capacity=capacity, 
             vehicle_id=vehicle_id, remaining_distance=remaining_distance)
+
+        present_services[i] = new_service
         
         departure_event = Event(departure_time, type=choose_departed_event(vehicles[vehicle_id]), vehicle_id=vehicle_id)
         arrival_event = Event(arrival_time, type=choose_arrived_event(vehicles[vehicle_id]), vehicle_id=vehicle_id)
@@ -357,6 +360,7 @@ def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame,
     
     vehicle_list = np.empty(len(vehicles_df), dtype=Vehicle)
     request_list = np.empty(len(requests_df), dtype=Request)
+    present_services = np.empty(len(services_df), dtype=Service)
     agent_dict = {}
     event_queue = EventQueue()
 
@@ -369,12 +373,12 @@ def build_environment(requests_df: pd.DataFrame, nodes_df: pd.DataFrame,
     }
 
     generate_vehicles(vehicles_df, vehicle_matrices, vehicle_list)
-    generate_services_and_events(services_df, dist_matrix, vehicle_list, event_queue)
+    generate_services_and_events(services_df, dist_matrix, vehicle_list, event_queue, present_services)
     generate_and_assign_agents(num_shippers, num_lsps, num_carriers, vehicle_list, agent_dict)
     generate_requests_and_events(requests_df, dist_matrix, request_list, event_queue)
 
     print("Environment built successfully")
 
     return Environment(requests=request_list, agents=agent_dict, vehicles=vehicle_list,
-                       vehicle_matrices=vehicle_matrices, events=event_queue, step_size=step_size)
+                       vehicle_matrices=vehicle_matrices, events=event_queue, present_services=present_services, step_size=step_size)
 

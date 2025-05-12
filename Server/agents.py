@@ -70,7 +70,7 @@ class Shipper:
                 best_offer = (carrier_id, lsp_id, price, time)
         return best_offer[3]
     
-    def decision_making(self, request: Request) -> List[List[Tuple[bool, Service]]]:
+    def decision_making(self, request: Request, present_services: List[Service]) -> List[List[Tuple[bool, Service]]]:
         """
         This function is called when a request arrives. It must call the decision making algorithm to decide
         which services are going to be assigned to the request. There may be services that are already created, and
@@ -104,7 +104,7 @@ class Shipper:
             return [
                 [
                     [True, 13, Service(0, 2, 2, 5, 100, 1, 1, 156)], 
-                    [False, 0, []]
+                    [False, 0, present_services[0]]
                 ]
             ]
 
