@@ -1,4 +1,4 @@
 id,name,initial_location,max_containers,unit_cost,emission_factor,carrier_id
-0,Train,90,1,1,0
+0,Train,2,1,1,1,0
 1,Truck,0,1,1,1,0
 

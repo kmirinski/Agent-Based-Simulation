@@ -134,9 +134,9 @@ def read_data_network():
     return nodes_df, connectivity_df
 
 def read_data_environment():
-    requests_df = pd.read_csv('Server/instance_files/param_demand_5.csv')
-    nodes_df = pd.read_csv('Server/instance_files/param_nodes.csv')
-    vehicles_df = pd.read_csv('Server/instance_files/param_vehicles.csv')
+    requests_df = pd.read_csv('Server/instance_files_test/param_demand_test.csv')
+    nodes_df = pd.read_csv('Server/instance_files_test/param_nodes_test.csv')
+    vehicles_df = pd.read_csv('Server/instance_files_test/param_vehicles_test.csv')
 
     with open('Server/instance_files/param_dist.csv') as f:
         f.readline().strip().split(',')
@@ -147,7 +147,7 @@ def read_data_environment():
     return requests_df, nodes_df, dist_matrix, vehicles_df
 
 def read_data_services():
-    services_df = pd.read_csv('Server/instance_files/param_train_barge_services.csv')
+    services_df = pd.read_csv('Server/instance_files_test/param_services_test.csv')
     return services_df
 
 def randomize_snapshot():

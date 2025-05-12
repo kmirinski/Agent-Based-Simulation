@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Tuple, TypeAlias
+from typing import List, Tuple, TypeAlias
 
 AccessType: TypeAlias = Tuple[bool, bool, bool]
 
@@ -80,10 +80,10 @@ class Request:
     selected_shipper: int                               # Shipper ID
     distance: int                                       # in km
 
-    services: int = field(default=0)                    # Number of services associated with the request
+    services: List[int]                                 # Number of services associated with the request
 
     def is_request_fulfilled(self):
-        return self.services == 0
+        return sum(self.services) == 0
 
 
 
@@ -99,6 +99,7 @@ class Event:
     type: Event_Type
     request_id: int = -1
     vehicle_id: int = -1
+    request_service_id: int = -1
     
     def __lt__(self, other: 'Event'):
         return self.timestamp < other.timestamp

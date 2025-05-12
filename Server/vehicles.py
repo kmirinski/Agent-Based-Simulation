@@ -117,7 +117,8 @@ class Vehicle:
 class Truck(Vehicle):
     depot: int = -1                             
     long_haul: bool = True
-    speed_per_timestep: int = random.randint(40, 60) # km/h
+    # SPEED MIGHT BE CHANGED FROM HERE (Can be done in such a way that the decision making algorithm chooses it)
+    speed_per_timestep: int = 60 + random.randint(-10, 10) # km/h
 
 @dataclass
 class Train(Vehicle):

@@ -4,7 +4,7 @@ import numpy as np
 from typing import List, Tuple
 
 from common import Request
-from vehicles import Vehicle, VehicleStatus
+from vehicles import Service, Vehicle, VehicleStatus
 
 class Carrier:
     """
@@ -70,8 +70,43 @@ class Shipper:
                 best_offer = (carrier_id, lsp_id, price, time)
         return best_offer[3]
     
-    def decision_making(self, request: Request) -> Tuple[int, int, float, float]:
-        pass
+    def decision_making(self, request: Request) -> List[List[Tuple[bool, Service]]]:
+        """
+        This function is called when a request arrives. It must call the decision making algorithm to decide
+        which services are going to be assigned to the request. There may be services that are already created, and
+        may be used as well (Barges and Trains).
+        
+        The result of the function is a list of lists. Each internal list represents a REQUEST SERVICE,
+        and whenever all request services are fulfilled, the request is considered fulfilled.
+
+        Each REQUEST SERVICE consists of vehicle services, and one can imagine it as a Directed Acyclic Graph.
+
+        This can be represented as a dictionary.
+        A scenario corresponding to this DAG would be:
+        A train delivers to somewhere (A),
+        then 2 trucks can pick up the containers and deliver them to somewhere else (B and C), then a train/barge can pick them up and deliver to final 
+        destination.
+
+        This function must wrap the data in a Service object, and return it.
+        """
+
+        # class Service(
+        #     origin: Any,
+        #     destination: Any,
+        #     departure_time: Any,
+        #     arrival_time: Any,
+        #     cost: Any,
+        #     capacity: Any,
+        #     vehicle_id: Any,
+        #     remaining_distance: Any
+        # )
+        if request.id == 0:
+            return [
+                [
+                    [True, 13, Service(0, 2, 2, 5, 100, 1, 1, 156)], 
+                    [False, 0, []]
+                ]
+            ]
 
 
         

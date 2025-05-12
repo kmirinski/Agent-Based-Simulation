@@ -19,7 +19,7 @@ num_shippers = 1
 num_lsps = 2
 num_carriers = 4
 
-load_time = 1
+LOAD_TIME = 1
 
 # ---------------------------------------------------------
 
@@ -111,23 +111,35 @@ class Environment:
 
         # RUN THE DECISION MAKING ALGORITHM TO DECIDE WHICH VEHICLES WILL EXECUTE THIS REQUEST
         #############################################
-        # delivery_time = shipper.contact_lsps(request)
 
-        vehicles_to_depart: List[Tuple[int, int, int]] = shipper.decision_making(request)
+        # Assumption: the decision-making algorithm guarantees that all dependency constraints are satisfied.
+        # For example, if two services must complete before a third can start, the third service's start time 
+        # will be after the later of the two finish times.
+
+        request_services: List[List[bool, Service]] = shipper.decision_making(request)
+        request.services = [len(inner_list) for inner_list in request_services]
+        
         #############################################
+        print(request_id)
+        for rs_index in range(len(request_services)):
+            request_service: List[bool, int, Service] = request_services[rs_index]
+            for is_service_generated, amount, service in request_service:
+                service: Service
+                # Past this if-check, the vehicle is guarateed to be a truck
+                if is_service_generated:
+                    vehicle_id = service.vehicle_id
+                    vehicle: Vehicle = self.vehicles[vehicle_id]
+                    vehicle.status = VehicleStatus.LOADING
+                    vehicle.services.put(service)
 
-        request.services += len(vehicles_to_depart)
+                    self.spawn_containers(vehicle, request_id, amount)
 
-        for vehicle_id, amount, timestamp in vehicles_to_depart:
-            vehicle: Vehicle = self.vehicles[vehicle_id]
-            vehicle.status = VehicleStatus.LOADING
-            self.spawn_containers(request, vehicle_id, amount)
-            new_event = Event(timestamp + load_time, self.choose_departed_event(vehicle), request_id=request_id, vehicle_id=vehicle_id)
-            self.events.put(new_event)
-
-            ## FIX FOR TRUCKS ## FIX FOR ALL!!!!!
+                    new_event_departure = Event(service.departure_time + LOAD_TIME, self.choose_departed_event(vehicle), request_id=request_id, vehicle_id=vehicle_id, request_service_id=rs_index)
+                    new_event_arrival = Event(service.arrival_time, self.choose_arrived_event(vehicle), request_id=request_id, vehicle_id=vehicle_id, request_service_id=rs_index)
+                    self.events.put(new_event_departure)
+                    self.events.put(new_event_arrival)
             
-        print(f"Request arrived: {request_id} - {request.origin} -> {request.destination}")
+        print(f"Request {request_id} arrived: {request.origin} -> {request.destination}")
 
     def request_completed(self, event: Event):
         request_id = event.request_id
@@ -136,30 +148,30 @@ class Environment:
         vehicle_id = event.vehicle_id
         vehicle = self.vehicles[vehicle_id]
         vehicle.status = VehicleStatus.IDLE
-        print(f"Request {request_id} completed at time {self.time}")
-        
+        print(f"Request {request_id} completed at time {self.time}")  
         
 
     def vehicle_departed(self, event: Event):
         vehicle_id = event.vehicle_id
         request_id = event.request_id
 
-        request: Request = self.requests[request_id]
         vehicle: Vehicle = self.vehicles[vehicle_id]
 
-        destination = request.destination
-        origin = request.origin
+        current_service: Service = vehicle.services.peek()
+        service_origin = current_service.origin
+        service_destination = current_service.destination
 
+        print(vehicle.name)
         # Update location
-        self.vehicle_matrices[vehicle.name][origin][origin] -= 1
-        self.vehicle_matrices[vehicle.name][origin][destination] += 1
-        self.vehicle_matrices["Container"][origin][origin] -= vehicle.number_of_containers
-        self.vehicle_matrices["Container"][origin][destination] += vehicle.number_of_containers
-        vehicle.current_location = [origin, destination]
+        self.vehicle_matrices[vehicle.name][service_origin][service_origin] -= 1
+        self.vehicle_matrices[vehicle.name][service_origin][service_destination] += 1
+        self.vehicle_matrices["Container"][service_origin][service_origin] -= vehicle.number_of_containers
+        self.vehicle_matrices["Container"][service_origin][service_destination] += vehicle.number_of_containers
+        vehicle.current_location = [service_origin, service_destination]
         
         # Update status
         vehicle.status = VehicleStatus.EN_ROUTE
-        print(f"Vehicle {vehicle_id} departed from {origin} for request {request_id} at time {self.time}")
+        print(f"Vehicle {vehicle_id} departed from {service_origin} for request {request_id} at time {self.time}")
 
     def vehicle_arrived(self, event: Event):
         request_id = event.request_id
@@ -168,27 +180,28 @@ class Environment:
         request: Request = self.requests[request_id]
         vehicle: Vehicle = self.vehicles[vehicle_id]
         
-        origin = request.origin
-        destination = request.destination
+        current_service: Service = vehicle.services.peek()
+        service_origin = current_service.origin
+        service_destination = current_service.destination
 
         # Update location
-        self.vehicle_matrices[vehicle.name][origin][destination] -= 1
-        self.vehicle_matrices[vehicle.name][destination][destination] += 1
-        self.vehicle_matrices["Container"][origin][destination] -= vehicle.number_of_containers
-        self.vehicle_matrices["Container"][destination][destination] += vehicle.number_of_containers
-        vehicle.current_location = [destination, destination]
+        self.vehicle_matrices[vehicle.name][service_origin][service_destination] -= 1
+        self.vehicle_matrices[vehicle.name][service_destination][service_destination] += 1
+        self.vehicle_matrices["Container"][service_origin][service_destination] -= vehicle.number_of_containers
+        self.vehicle_matrices["Container"][service_destination][service_destination] += vehicle.number_of_containers
+        vehicle.current_location = [service_destination, service_destination]
 
         # Update status
         vehicle.status = VehicleStatus.UNLOADING
         vehicle.services.get()
-        request.services -= 1
+        request.services[event.request_service_id] -= 1
 
         if request.is_request_fulfilled():
-            new_event = Event(self.time + load_time, Event_Type.REQUEST_COMPLETED, request_id=request_id, vehicle=vehicle)
+            new_event = Event(self.time + LOAD_TIME, Event_Type.REQUEST_COMPLETED, request_id=request_id, vehicle_id=vehicle_id)
             self.events.put(new_event)
 
         
-        print(f"Vehicle {vehicle_id} arrived at {destination} for request {request_id} at time {self.time}")
+        print(f"Vehicle {vehicle_id} arrived at {service_destination} for request {request_id} at time {self.time}")
         
     def spawn_containers(self, vehicle: Vehicle, request_id: int, amount: int):
         # Algorithm ensures that the vehicle has enough capacity for the amount
@@ -327,13 +340,14 @@ def generate_requests_and_events(requests_df : pd.DataFrame, dist_matrix, reques
         # price = int(requests_df.iloc[i]['price'])
         time_window: Tuple[int, int] = (int(requests_df.iloc[i]['lw']), int(requests_df.iloc[i]['uw']))
         selected_shipper = int(requests_df.iloc[i]['selected']) - 1
+        services = []
 
         distance = dist_matrix[origin][destination]
         
         new_request = Request(
                 id=request_id, origin=origin, 
                 destination=destination, amount=amount, time_window=time_window, 
-                selected_shipper=selected_shipper, distance=distance)
+                selected_shipper=selected_shipper, distance=distance, services=services)
         
         requests[i] = new_request   
 
