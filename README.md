@@ -25,7 +25,7 @@ To get started with the project, follow these steps:
    This will install all the necessary packages listed in the `requirements.txt` file.
 
 ## Input
-The user is required to have the following files and their corresponding format:
+The user is required to have the following files and their corresponding formats:
 - **List of Requests** - This file should be a CSV containing all shipment requests in the simulation. Each row represents one request with the following columns:
 
 | Column     | Description                                                                 |

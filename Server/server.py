@@ -138,7 +138,7 @@ def read_data_environment():
     nodes_df = pd.read_csv('Server/instance_files_test/param_nodes_test.csv')
     vehicles_df = pd.read_csv('Server/instance_files_test/param_vehicles_test.csv')
 
-    with open('Server/instance_files/param_dist.csv') as f:
+    with open('Server/instance_files_test/param_dist_test.csv') as f:
         f.readline().strip().split(',')
         dist_matrix = pd.read_csv(f, header=None).values
 
@@ -201,10 +201,10 @@ def initialize():
     return network, environment
 
 def run_simulation():
-    asyncio.run(main()) # for debug
-    # while get_snapshot():
-    #     pass
-    # print("Simulation completed")
+    # asyncio.run(main()) # for debug
+    while get_snapshot():
+        pass
+    print("Simulation completed")
     
 def save_results():
     # Save events
@@ -212,7 +212,7 @@ def save_results():
     # Save environment states
     environment.state_logger.log_states()
     # Save overall calculations
-    # environment.calculations_logger.log_calculations()
+    environment.statistics_tracker.log_statistics()
     print("Results saved successfully")
 
 def send_results():

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Tuple, List, Dict
 
 from agents import Shipper, LSP, Carrier
-from data_logger import EventLogger, EnvironmentStateLogger
+from data_logger import EventLogger, EnvironmentStateLogger, StatisticsTracker
 
 from common import Request, Event, Event_Type, Agent_Type
 from vehicles import Service, Truck, Train, Barge, Vehicle, VehicleStatus
@@ -57,6 +57,7 @@ class Environment:
     vehicle_matrices: Dict[str, np.ndarray] = None
     events: EventQueue = None
     present_services: List[Service] = None
+    statistics_tracker: StatisticsTracker = StatisticsTracker()
     event_logger: EventLogger = EventLogger()
     state_logger: EnvironmentStateLogger = EnvironmentStateLogger()
     step_size: int = 0
@@ -68,11 +69,13 @@ class Environment:
             print(f"Time: {self.time}")
             while(True):
                 if (self.events.empty()):
+                    self.statistics_tracker.calculate_modal_share()
                     print("No more events to process")
                     return None
                 top_event : Event = self.events.peek()
                 if(self.time >= top_event.timestamp):
                     event = self.events.get()
+                    self.event_logger.save_event(event)
                     self.process_event(event)
                 else:
                     self.state_logger.save_state(self.time, self.vehicle_matrices, self.vehicles)
@@ -80,8 +83,6 @@ class Environment:
         else:
             print("No more events to process")
             return None
-        # print([vehicle.vehicle_id for vehicle in self.agents[Agent_Type.CARRIER][0].fleet])
-        # print(self.vehicle_matrices["Train"])
         return self.vehicle_matrices
     
     def process_event(self, event: Event):
@@ -215,6 +216,7 @@ class Environment:
         vehicle.current_location = [service_destination, service_destination]
 
         vehicle.status = VehicleStatus.UNLOADING
+        self.statistics_tracker.add_distance(vehicle.name, current_service.remaining_distance)
         vehicle.services.get()
 
         for request in current_service.requests:
