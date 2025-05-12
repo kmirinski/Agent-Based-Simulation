@@ -100,11 +100,16 @@ class Shipper:
         #     vehicle_id: Any,
         #     remaining_distance: Any
         # )
+
+        # THIS IS HARDCODED FOR TESTING PURPOSES ONLY, BUT THIS IS HOW THE OUTPUT SHOULD LOOK LIKE
         if request.id == 0:
             return [
                 [
-                    [True, 13, Service(0, 2, 2, 5, 100, 1, 1, 156)], 
-                    [False, 0, present_services[0]]
+                    [True, False, 13, Service(0, 2, 2, 5, 100, 1, 1, 156)], 
+                    [False, False, 0, present_services[0]]
+                ],
+                [
+                    [True, False, 13, Service(1, 2, 13, 17, 100, 1, 2, 47)]
                 ]
             ]
 

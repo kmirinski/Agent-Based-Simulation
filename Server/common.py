@@ -65,6 +65,9 @@ class Event_Type(Enum):
     TRAIN_ARRIVED = 6
     BARGE_ARRIVED = 7
 
+    TRAIN_LOADING = 8
+    BARGE_LOADING = 9
+
 class Agent_Type(Enum):
     SHIPPER = 0
     LSP = 1

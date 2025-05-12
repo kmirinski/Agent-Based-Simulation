@@ -86,14 +86,16 @@ class Environment:
     
     def process_event(self, event: Event):
         event_handlers = {
-            Event_Type.REQUEST_ARRIVED: self.request_arrived,
-            Event_Type.REQUEST_COMPLETED: self.request_completed,
-            Event_Type.TRUCK_DEPARTED: self.vehicle_departed,
-            Event_Type.TRAIN_DEPARTED: self.vehicle_departed,
-            Event_Type.BARGE_DEPARTED: self.vehicle_departed,
-            Event_Type.TRUCK_ARRIVED: self.vehicle_arrived,
-            Event_Type.TRAIN_ARRIVED: self.vehicle_arrived,
-            Event_Type.BARGE_ARRIVED: self.vehicle_arrived
+            Event_Type.REQUEST_ARRIVED: self.request_arrived_event,
+            Event_Type.REQUEST_COMPLETED: self.request_completed_event,
+            Event_Type.TRUCK_DEPARTED: self.vehicle_departed_event,
+            Event_Type.TRAIN_DEPARTED: self.vehicle_departed_event,
+            Event_Type.BARGE_DEPARTED: self.vehicle_departed_event,
+            Event_Type.TRUCK_ARRIVED: self.vehicle_arrived_event,
+            Event_Type.TRAIN_ARRIVED: self.vehicle_arrived_event,
+            Event_Type.BARGE_ARRIVED: self.vehicle_arrived_event,
+            Event_Type.TRAIN_LOADING: self.load_vehicle_event,
+            Event_Type.BARGE_LOADING: self.load_vehicle_event
         }
         
         handler = event_handlers.get(event.type)
@@ -102,8 +104,23 @@ class Environment:
         else:
             raise ValueError(f"No handler for event type: {event.type}")
 
+    def load_vehicle_event(self, event: Event):
+        vehicle_id = event.vehicle_id
+        vehicle: Vehicle = self.vehicles[vehicle_id]
+        service: Service = vehicle.services.peek()
 
-    def request_arrived(self, event: Event):
+        total = sum(t[1] for t in service.requests)
+        if total > 0:
+            vehicle.status = VehicleStatus.LOADING
+            vehicle.number_of_containers = total
+        
+        print(f"Vehicle {vehicle_id} loading at {vehicle.current_location[0]} for requests {', '.join(str(x[0]) for x in service.requests)} at time {self.time}")
+
+            
+            
+
+
+    def request_arrived_event(self, event: Event):
         request_id = event.request_id
         request : Request = self.requests[request_id]
 
@@ -122,31 +139,36 @@ class Environment:
         
         #############################################
         for rs_index in range(len(request_services)):
-            request_service: List[bool, int, Service] = request_services[rs_index]
-            for is_service_generated, amount, service in request_service:
+            request_service: List[bool, bool, int, Service] = request_services[rs_index]
+            for is_service_generated, is_container_spawned, amount, service in request_service:
                 service: Service
+                number_of_containers = amount // 24 + 1
                 # Past this if-check, the vehicle is guarateed to be a truck
                 if is_service_generated:
                     vehicle_id = service.vehicle_id
                     vehicle: Vehicle = self.vehicles[vehicle_id]
                     vehicle.status = VehicleStatus.LOADING
-                    service.requests.append(request_id)
                     vehicle.services.put(service)
-
-                    self.spawn_containers(vehicle, request_id, amount)
-
+                    service.requests.append([request_id, number_of_containers])
+                    if is_container_spawned:
+                        self.spawn_containers(vehicle, request_id, number_of_containers)
+                    else:
+                        # Does not make sense in normal operation, but it works for the program
+                        # Can be properly handled with the loading event
+                        vehicle.number_of_containers = number_of_containers
+                    
                     new_event_departure = Event(service.departure_time + LOAD_TIME, choose_departed_event(vehicle), request_id=request_id, vehicle_id=vehicle_id, request_service_id=rs_index)
                     new_event_arrival = Event(service.arrival_time, choose_arrived_event(vehicle), request_id=request_id, vehicle_id=vehicle_id, request_service_id=rs_index)
                     self.events.put(new_event_departure)
                     self.events.put(new_event_arrival)
                 else:
-                    service.requests.append(request_id)
+                    service.requests.append([request_id, number_of_containers])
 
 
             
         print(f"Request {request_id} arrived: {request.origin} -> {request.destination}")
 
-    def request_completed(self, event: Event):
+    def request_completed_event(self, event: Event):
         request_id = event.request_id
 
         # Last vehicle to arrive for the request
@@ -156,7 +178,7 @@ class Environment:
         print(f"Request {request_id} completed at time {self.time}")  
         
 
-    def vehicle_departed(self, event: Event):
+    def vehicle_departed_event(self, event: Event):
         vehicle_id = event.vehicle_id
         vehicle: Vehicle = self.vehicles[vehicle_id]
 
@@ -173,13 +195,12 @@ class Environment:
         
         # Update status
         vehicle.status = VehicleStatus.EN_ROUTE
-        print(f"Vehicle {vehicle_id} departed from {service_origin} for requests {', '.join(str(x) for x in current_service.requests)} at time {self.time}")
+        print(f"Vehicle {vehicle_id} departed from {service_origin} for requests {', '.join(str(x[0]) for x in current_service.requests)} at time {self.time}")
 
-    def vehicle_arrived(self, event: Event):
+    def vehicle_arrived_event(self, event: Event):
         request_id = event.request_id
         vehicle_id = event.vehicle_id
 
-        request: Request = self.requests[request_id]
         vehicle: Vehicle = self.vehicles[vehicle_id]
         
         current_service: Service = vehicle.services.peek()
@@ -193,25 +214,39 @@ class Environment:
         self.vehicle_matrices["Container"][service_destination][service_destination] += vehicle.number_of_containers
         vehicle.current_location = [service_destination, service_destination]
 
-        # Update status
         vehicle.status = VehicleStatus.UNLOADING
         vehicle.services.get()
-        request.services[event.request_service_id] -= 1
 
-        if request.is_request_fulfilled():
-            new_event = Event(self.time + LOAD_TIME, Event_Type.REQUEST_COMPLETED, request_id=request_id, vehicle_id=vehicle_id)
-            self.events.put(new_event)
+        for request in current_service.requests:
+            request_id = request[0]
+            request: Request = self.requests[request_id]
+            request.services[request_id] -= 1
+            if request.is_request_fulfilled():
+                new_event = Event(self.time + LOAD_TIME, Event_Type.REQUEST_COMPLETED, request_id=request_id, vehicle_id=vehicle_id)
+                self.events.put(new_event)
+        
+            
+
 
         
-        print(f"Vehicle {vehicle_id} arrived at {service_destination} for requests {', '.join(str(x) for x in current_service.requests)} at time {self.time}")
+        print(f"Vehicle {vehicle_id} arrived at {service_destination} for requests {', '.join(str(x[0]) for x in current_service.requests)} at time {self.time}")
         
-    def spawn_containers(self, vehicle: Vehicle, request_id: int, amount: int):
+    def spawn_containers(self, vehicle: Vehicle, request_id: int, number_of_containers: int):
         # Algorithm ensures that the vehicle has enough capacity for the amount
-        number_of_containers = amount // 24 + 1
         vehicle.load_vehicle(request_id, number_of_containers)
         self.vehicle_matrices["Container"][vehicle.current_location[0]][vehicle.current_location[1]] += number_of_containers 
 
 # ---------------------------------------------------------
+
+def choose_loading_event(vehicle: Vehicle):
+    # if isinstance(vehicle, Truck):
+    #     return Event_Type.TRUCK_LOADING
+    if isinstance(vehicle, Train):
+        return Event_Type.TRAIN_LOADING
+    elif isinstance(vehicle, Barge):
+        return Event_Type.BARGE_LOADING
+    else:
+        raise ValueError("Unknown vehicle type")
 
 def choose_arrived_event(vehicle: Vehicle):
         if isinstance(vehicle, Truck):
@@ -282,9 +317,11 @@ def generate_services_and_events(services_df: pd.DataFrame, dist_matrix: np.ndar
 
         present_services[i] = new_service
         
+        load_event = Event(departure_time - LOAD_TIME, choose_loading_event(vehicles[vehicle_id]), vehicle_id=vehicle_id)
         departure_event = Event(departure_time, type=choose_departed_event(vehicles[vehicle_id]), vehicle_id=vehicle_id)
         arrival_event = Event(arrival_time, type=choose_arrived_event(vehicles[vehicle_id]), vehicle_id=vehicle_id)
         
+        event_queue.put(load_event)
         event_queue.put(departure_event)
         event_queue.put(arrival_event)
 
