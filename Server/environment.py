@@ -254,6 +254,7 @@ def generate_services_and_events(services_df: pd.DataFrame, dist_matrix: np.ndar
     services_size = len(services_df)
 
     for i in range(services_size):
+        type_of_service = services_df.iloc[i]['type']
         origin = int(services_df.iloc[i]['origin'])
         destination = int(services_df.iloc[i]['destination'])
         departure_time = float(services_df.iloc[i]['departure_time'])
@@ -269,8 +270,13 @@ def generate_services_and_events(services_df: pd.DataFrame, dist_matrix: np.ndar
             vehicle_id=vehicle_id, remaining_distance=remaining_distance)
         
         # Check the vehicle ID - might need to change the Event class
-        departure_event = Event(departure_time, type=Event_Type.TRAIN_DEPARTED, vehicle_id=vehicle_id)
-        arrival_event = Event(arrival_time, type=Event_Type.TRAIN_ARRIVED, vehicle_id=vehicle_id)
+        if type_of_service == "Train":
+            departure_event = Event(departure_time, type=Event_Type.TRAIN_DEPARTED, vehicle_id=vehicle_id)
+            arrival_event = Event(arrival_time, type=Event_Type.TRAIN_ARRIVED, vehicle_id=vehicle_id)
+        elif type_of_service == "Barge":
+            departure_event = Event(departure_time, type=Event_Type.BARGE_DEPARTED, vehicle_id=vehicle_id)
+            arrival_event = Event(arrival_time, type=Event_Type.BARGE_ARRIVED, vehicle_id=vehicle_id)
+        
         event_queue.put(departure_event)
         event_queue.put(arrival_event)
 

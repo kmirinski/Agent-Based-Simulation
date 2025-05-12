@@ -147,7 +147,7 @@ def read_data_environment():
     return requests_df, nodes_df, dist_matrix, vehicles_df
 
 def read_data_services():
-    services_df = pd.read_csv('Server/instance_files/param_train_services.csv')
+    services_df = pd.read_csv('Server/instance_files/param_train_barge_services.csv')
     return services_df
 
 def randomize_snapshot():
